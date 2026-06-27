@@ -53,6 +53,7 @@ export const settings = sqliteTable('settings', {
 });
 
 export type PolicyConfig = {
+	backupDisabled?: boolean;
 	tetheringDisabled?: boolean;
 	wifiConfigDisabled?: boolean;
 	allowedSsids?: string[];

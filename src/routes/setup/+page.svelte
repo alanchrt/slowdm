@@ -27,7 +27,7 @@
 					<ol class="list-inside list-decimal space-y-1">
 						<li>Go to <strong>Google Cloud Console</strong> and create a new project</li>
 						<li>Enable the <strong>Android Management API</strong></li>
-						<li>Create a <strong>Service Account</strong> with no special roles needed</li>
+						<li>Create a <strong>Service Account</strong> and grant it the <strong>Android Management User</strong> role</li>
 						<li>Create a JSON key for the service account</li>
 						<li>Paste the JSON key contents below</li>
 					</ol>

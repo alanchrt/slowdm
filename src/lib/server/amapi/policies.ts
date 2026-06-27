@@ -11,6 +11,15 @@ export function buildAmapiPolicy(config: PolicyConfig): AmapiPolicy {
 		statusBarDisabled: false
 	};
 
+	// Backup enabled by default; only disable if explicitly set
+	if (config.backupDisabled) {
+		policy.advancedSecurityOverrides = {
+			...(policy.advancedSecurityOverrides as Record<string, unknown>),
+			googlePlayProtectVerifyApps: 'VERIFY_APPS_ENFORCED'
+		};
+		policy.backupDisabled = true;
+	}
+
 	if (config.tetheringDisabled) {
 		policy.tetheringConfigDisabled = true;
 	}

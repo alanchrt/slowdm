@@ -42,7 +42,11 @@
 					</div>
 				</div>
 
-				<div class="flex gap-6">
+				<div class="flex flex-wrap gap-6">
+					<label class="flex items-center gap-2 text-sm">
+						<input type="checkbox" name="backup_disabled" class="rounded" />
+						Disable Backup & Restore
+					</label>
 					<label class="flex items-center gap-2 text-sm">
 						<input type="checkbox" name="tethering_disabled" class="rounded" />
 						Disable Tethering/Hotspot
@@ -101,6 +105,9 @@
 			</div>
 
 			<div class="mt-3 flex flex-wrap gap-2 text-xs">
+				{#if policy.config.backupDisabled}
+					<span class="rounded bg-red-100 px-2 py-1 text-red-700">Backup Disabled</span>
+				{/if}
 				{#if policy.config.tetheringDisabled}
 					<span class="rounded bg-red-100 px-2 py-1 text-red-700">Hotspot Disabled</span>
 				{/if}
@@ -123,7 +130,11 @@
 						<label class="mb-1 block text-sm font-medium">Display Name</label>
 						<Input type="text" name="display_name" value={policy.displayName} required />
 					</div>
-					<div class="flex gap-6">
+					<div class="flex flex-wrap gap-6">
+						<label class="flex items-center gap-2 text-sm">
+							<input type="checkbox" name="backup_disabled" checked={policy.config.backupDisabled} />
+							Disable Backup & Restore
+						</label>
 						<label class="flex items-center gap-2 text-sm">
 							<input type="checkbox" name="tethering_disabled" checked={policy.config.tetheringDisabled} />
 							Disable Tethering

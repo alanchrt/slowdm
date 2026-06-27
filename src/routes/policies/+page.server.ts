@@ -23,6 +23,7 @@ export const actions: Actions = {
 		if (!name || !displayName) return fail(400, { error: 'Name and display name are required' });
 
 		const config: PolicyConfig = {
+			backupDisabled: formData.get('backup_disabled') === 'on',
 			tetheringDisabled: formData.get('tethering_disabled') === 'on',
 			wifiConfigDisabled: formData.get('wifi_config_disabled') === 'on',
 			appMode: (formData.get('app_mode') as PolicyConfig['appMode']) || 'none',
@@ -59,6 +60,7 @@ export const actions: Actions = {
 		const displayName = formData.get('display_name') as string;
 
 		const config: PolicyConfig = {
+			backupDisabled: formData.get('backup_disabled') === 'on',
 			tetheringDisabled: formData.get('tethering_disabled') === 'on',
 			wifiConfigDisabled: formData.get('wifi_config_disabled') === 'on',
 			appMode: (formData.get('app_mode') as PolicyConfig['appMode']) || 'none',
