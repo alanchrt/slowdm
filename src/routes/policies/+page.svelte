@@ -31,15 +31,17 @@
 		<Card>
 			<h2 class="mb-4 text-lg font-semibold">Create Policy</h2>
 			<form method="POST" action="?/create" class="space-y-4">
-				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-					<div>
-						<label for="name" class="mb-1 block text-sm font-medium">Slug</label>
-						<Input type="text" name="name" id="name" placeholder="my-policy" required />
-					</div>
-					<div>
-						<label for="display_name" class="mb-1 block text-sm font-medium">Display Name</label>
-						<Input type="text" name="display_name" id="display_name" placeholder="My Policy" required />
-					</div>
+				<div>
+					<label for="display_name" class="mb-1 block text-sm font-medium">Name</label>
+					<Input type="text" name="display_name" id="display_name" placeholder="Bedtime" required oninput={(e) => {
+						const slug = e.currentTarget.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+						const slugInput = e.currentTarget.form?.querySelector('[name=name]');
+						if (slugInput) slugInput.value = slug;
+					}} />
+				</div>
+				<div>
+					<label for="name" class="mb-1 block text-sm font-medium">Slug</label>
+					<Input type="text" name="name" id="name" placeholder="bedtime" required class="font-mono text-xs" />
 				</div>
 
 				<div class="flex flex-wrap gap-6">
