@@ -9,7 +9,10 @@
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "wrangler d1 migrations apply slowdm-db --local",
+		"db:migrate:remote": "wrangler d1 migrations apply slowdm-db --remote"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.1",

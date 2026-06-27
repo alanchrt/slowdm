@@ -6,7 +6,8 @@
 		{
 			"binding": "DB",
 			"database_name": "slowdm-db",
-			"database_id": "local"
+			"database_id": "local",
+			"migrations_dir": "drizzle"
 		}
 	],
 	"triggers": {
