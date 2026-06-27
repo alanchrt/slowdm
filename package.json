@@ -14,7 +14,7 @@
 	],
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build",
+		"build": "vite build && node scripts/postbuild.mjs",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -23,7 +23,7 @@
 		"db:migrate": "wrangler d1 migrations apply slowdm-db --local",
 		"db:migrate:remote": "wrangler d1 migrations apply slowdm-db --remote",
 		"setup": "./deploy.sh setup",
-		"deploy": "./deploy.sh deploy",
+		"update": "./deploy.sh update",
 		"deploy:secrets": "./deploy.sh secrets",
 		"prepublishOnly": "npm run build && cp -r .svelte-kit/cloudflare dist"
 	},

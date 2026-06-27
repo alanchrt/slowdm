@@ -35,7 +35,7 @@ do_build_deploy() {
   npm run build
 
   echo "  Deploying..."
-  npx wrangler pages deploy .svelte-kit/cloudflare --project-name slowdm
+  npx wrangler deploy
 }
 
 # ── Commands ──
@@ -58,35 +58,21 @@ do_setup() {
   read -s -p "  Admin password: " AUTH_PASSWORD
   echo ""
   [ -z "$AUTH_PASSWORD" ] && { echo "  ERROR: Password cannot be empty."; exit 1; }
-  echo "$AUTH_PASSWORD" | npx wrangler pages secret put AUTH_PASSWORD --project-name slowdm 2>/dev/null || \
   echo "$AUTH_PASSWORD" | npx wrangler secret put AUTH_PASSWORD 2>/dev/null || true
   echo "  Password set."
   echo ""
 
-  echo "  Paste your Google Cloud service account JSON key."
-  read -p "  Set service account now? [Y/n] " -r SA_CHOICE
-  if [[ "${SA_CHOICE:-Y}" =~ ^[Yy]?$ ]]; then
-    echo "  Paste the JSON (then press Enter):"
-    read -r SA_JSON
-    if [ -n "$SA_JSON" ]; then
-      echo "$SA_JSON" | npx wrangler pages secret put GOOGLE_SERVICE_ACCOUNT_JSON --project-name slowdm 2>/dev/null || \
-      echo "$SA_JSON" | npx wrangler secret put GOOGLE_SERVICE_ACCOUNT_JSON 2>/dev/null || true
-      echo "  Service account set."
-    fi
-  else
-    echo "  Skipped. Run './deploy.sh secrets' later."
-  fi
   echo ""
 
   do_build_deploy
 
   echo ""
   echo "  Setup complete! Visit your deployment URL above."
-  echo "  Future deploys: npm run deploy"
+  echo "  Future updates: npm run update"
   echo ""
 }
 
-do_deploy() {
+do_update() {
   check_prereqs
   ensure_auth
   ensure_deps
@@ -100,25 +86,23 @@ do_deploy() {
 do_secrets() {
   ensure_auth
   echo "  Set AUTH_PASSWORD:"
-  npx wrangler pages secret put AUTH_PASSWORD --project-name slowdm 2>/dev/null || \
-  npx wrangler secret put AUTH_PASSWORD 2>/dev/null
+  npx wrangler secret put AUTH_PASSWORD
   echo ""
   echo "  Set GOOGLE_SERVICE_ACCOUNT_JSON:"
-  npx wrangler pages secret put GOOGLE_SERVICE_ACCOUNT_JSON --project-name slowdm 2>/dev/null || \
-  npx wrangler secret put GOOGLE_SERVICE_ACCOUNT_JSON 2>/dev/null
+  npx wrangler secret put GOOGLE_SERVICE_ACCOUNT_JSON
 }
 
 # ── Main ──
 
 case "$COMMAND" in
   setup)   do_setup ;;
-  deploy)  do_deploy ;;
+  update)  do_update ;;
   secrets) do_secrets ;;
   *)
     echo "Usage: ./deploy.sh <command>"
     echo ""
     echo "  setup    First-time setup (create resources, set secrets, deploy)"
-    echo "  deploy   Ensure resources, build, deploy (idempotent)"
+    echo "  update   Ensure resources, build, deploy (idempotent)"
     echo "  secrets  Update secrets (password, service account)"
     ;;
 esac

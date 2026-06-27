@@ -2,6 +2,7 @@
 	import Button from '$lib/components/Button.svelte';
 	import Input from '$lib/components/Input.svelte';
 	import Card from '$lib/components/Card.svelte';
+	import TimezoneSelect from '$lib/components/TimezoneSelect.svelte';
 
 	let { data, form } = $props();
 	let step = $derived(form?.step ?? data.step);
@@ -16,8 +17,8 @@
 		<h1 class="mb-2 text-2xl font-bold">SlowDM Setup</h1>
 		<p class="mb-6 text-muted-foreground">Step {step} of 3</p>
 
-		{#if form?.error}
-			<div class="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-600">{form.error}</div>
+		{#if form?.error || data.error}
+			<div class="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-600">{form?.error || data.error}</div>
 		{/if}
 
 		{#if step === 1}
@@ -51,7 +52,7 @@
 		{:else if step === 2}
 			<div class="space-y-4">
 				<p>Credentials verified. Now let's create your Android Enterprise.</p>
-				<p class="text-sm text-muted-foreground">This creates a managed Google Play enterprise that will manage your devices.</p>
+				<p class="text-sm text-muted-foreground">You'll be redirected to Google to complete enterprise registration, then sent back here automatically.</p>
 
 				<form method="POST" action="?/create-enterprise">
 					<Button type="submit">Create Enterprise</Button>
@@ -59,9 +60,9 @@
 			</div>
 		{:else if step === 3}
 			<div class="space-y-4">
-				{#if form?.enterpriseName}
+				{#if data.enterpriseName || form?.enterpriseName}
 					<div class="rounded-md bg-green-50 p-3 text-sm text-green-700">
-						Enterprise created: <code>{form.enterpriseName}</code>
+						Enterprise created: <code>{data.enterpriseName || form?.enterpriseName}</code>
 					</div>
 				{/if}
 
@@ -70,15 +71,7 @@
 				<form method="POST" action="?/complete-setup" class="space-y-4">
 					<div>
 						<label for="timezone" class="mb-1 block text-sm font-medium">Timezone</label>
-						<Input
-							type="text"
-							name="timezone"
-							id="timezone"
-							value="America/New_York"
-							placeholder="America/New_York"
-							required
-						/>
-						<p class="mt-1 text-xs text-muted-foreground">IANA timezone (e.g. America/Chicago, Europe/London)</p>
+						<TimezoneSelect />
 					</div>
 					<Button type="submit">Complete Setup</Button>
 				</form>

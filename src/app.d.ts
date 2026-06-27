@@ -8,6 +8,7 @@ declare global {
 				DB: D1Database;
 				AUTH_PASSWORD?: string;
 				AUTH_SECRET?: string;
+				CRON_SECRET?: string;
 				GOOGLE_SERVICE_ACCOUNT_JSON?: string;
 			};
 			cf?: CfProperties;

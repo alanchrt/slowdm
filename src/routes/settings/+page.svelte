@@ -2,6 +2,7 @@
 	import Card from '$lib/components/Card.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import Input from '$lib/components/Input.svelte';
+	import TimezoneSelect from '$lib/components/TimezoneSelect.svelte';
 
 	let { data, form } = $props();
 </script>
@@ -28,7 +29,7 @@
 		<form method="POST" action="?/update-settings" class="space-y-4">
 			<div>
 				<label for="timezone" class="mb-1 block text-sm font-medium">Timezone</label>
-				<Input type="text" name="timezone" id="timezone" value={data.timezone} />
+				<TimezoneSelect value={data.timezone} />
 			</div>
 			<div>
 				<label for="default_policy" class="mb-1 block text-sm font-medium">Default Policy</label>

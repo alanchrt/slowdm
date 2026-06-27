@@ -146,14 +146,8 @@ function ensureResources() {
 // ── Deploy ──
 
 function deploy() {
-  const distDir = join(PKG_ROOT, 'dist');
-  if (!existsSync(distDir)) {
-    console.error('  ERROR: dist/ not found. Package may not be built correctly.');
-    process.exit(1);
-  }
-
-  console.log('  Deploying to Cloudflare Pages...');
-  run(wrangler(`pages deploy "${distDir}" --project-name slowdm`));
+  console.log('  Deploying to Cloudflare Workers...');
+  run(wrangler('deploy'));
 }
 
 // ── Commands ──
@@ -180,54 +174,23 @@ async function cmdSetup() {
     console.error('  ERROR: Password cannot be empty.');
     process.exit(1);
   }
-  const pwResult = spawnSync('npx', ['wrangler', 'pages', 'secret', 'put', 'AUTH_PASSWORD', '--project-name', 'slowdm'], {
+  spawnSync('npx', ['wrangler', 'secret', 'put', 'AUTH_PASSWORD', '--config', STATE_CONFIG], {
     input: password,
     encoding: 'utf-8',
     stdio: ['pipe', 'inherit', 'inherit']
   });
-  if (pwResult.status !== 0) {
-    // Fallback for Workers
-    spawnSync('npx', ['wrangler', 'secret', 'put', 'AUTH_PASSWORD', '--config', STATE_CONFIG], {
-      input: password,
-      encoding: 'utf-8',
-      stdio: ['pipe', 'inherit', 'inherit']
-    });
-  }
   console.log('  Password set.');
-  console.log('');
-
-  const saChoice = await prompt('  Set Google service account JSON now? [Y/n] ');
-  if (!saChoice || saChoice.match(/^[Yy]/)) {
-    const saJson = await prompt('  Paste the JSON: ');
-    if (saJson) {
-      const saResult = spawnSync('npx', ['wrangler', 'pages', 'secret', 'put', 'GOOGLE_SERVICE_ACCOUNT_JSON', '--project-name', 'slowdm'], {
-        input: saJson,
-        encoding: 'utf-8',
-        stdio: ['pipe', 'inherit', 'inherit']
-      });
-      if (saResult.status !== 0) {
-        spawnSync('npx', ['wrangler', 'secret', 'put', 'GOOGLE_SERVICE_ACCOUNT_JSON', '--config', STATE_CONFIG], {
-          input: saJson,
-          encoding: 'utf-8',
-          stdio: ['pipe', 'inherit', 'inherit']
-        });
-      }
-      console.log('  Service account set.');
-    }
-  } else {
-    console.log('  Skipped. Run "npx slowdm secrets" later.');
-  }
   console.log('');
 
   deploy();
 
   console.log('');
   console.log('  Setup complete! Visit your deployment URL above.');
-  console.log('  Future deploys: npx slowdm deploy');
+  console.log('  Future updates: npx slowdm update');
   console.log('');
 }
 
-function cmdDeploy() {
+function cmdUpdate() {
   if (!existsSync(STATE_CONFIG)) {
     console.error('  No SlowDM config found. Run "npx slowdm setup" first.');
     process.exit(1);
@@ -249,10 +212,10 @@ function cmdDeploy() {
 async function cmdSecrets() {
   ensureAuth();
   console.log('  Set AUTH_PASSWORD:');
-  run('npx wrangler pages secret put AUTH_PASSWORD --project-name slowdm 2>/dev/null || npx wrangler secret put AUTH_PASSWORD');
+  run(wrangler('secret put AUTH_PASSWORD'));
   console.log('');
   console.log('  Set GOOGLE_SERVICE_ACCOUNT_JSON:');
-  run('npx wrangler pages secret put GOOGLE_SERVICE_ACCOUNT_JSON --project-name slowdm 2>/dev/null || npx wrangler secret put GOOGLE_SERVICE_ACCOUNT_JSON');
+  run(wrangler('secret put GOOGLE_SERVICE_ACCOUNT_JSON'));
 }
 
 // ── Main ──
@@ -263,8 +226,8 @@ switch (command) {
   case 'setup':
     await cmdSetup();
     break;
-  case 'deploy':
-    cmdDeploy();
+  case 'update':
+    cmdUpdate();
     break;
   case 'secrets':
     await cmdSecrets();
@@ -276,7 +239,7 @@ switch (command) {
     console.log('  Usage: npx slowdm <command>');
     console.log('');
     console.log('    setup    First-time setup (create resources, set secrets, deploy)');
-    console.log('    deploy   Ensure resources and deploy (idempotent)');
+    console.log('    update   Ensure resources and deploy (idempotent)');
     console.log('    secrets  Update secrets (password, service account)');
     console.log('');
     break;

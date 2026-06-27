@@ -3,14 +3,32 @@ import { fail, redirect } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db';
 import { getSetting, setSetting, seedDefaults } from '$lib/server/db/seed';
 import { testAuth, parseServiceAccount } from '$lib/server/amapi/client';
-import { createEnterprise } from '$lib/server/amapi/enterprise';
+import { createSignupUrl, createEnterprise } from '$lib/server/amapi/enterprise';
 
-export const load: PageServerLoad = async ({ platform }) => {
+export const load: PageServerLoad = async ({ platform, url }) => {
 	if (!platform?.env?.DB) return { step: 1 };
 
 	const db = getDb(platform.env.DB);
 	const setupComplete = await getSetting(db, 'setup_complete');
 	if (setupComplete) throw redirect(302, '/');
+
+	// Handle enterprise signup callback from Google
+	const enterpriseToken = url.searchParams.get('enterpriseToken');
+	if (enterpriseToken) {
+		const saJson = await getSetting(db, 'service_account_json');
+		const signupUrlName = await getSetting(db, 'signup_url_name');
+		if (saJson && signupUrlName) {
+			try {
+				const sa = parseServiceAccount(saJson);
+				const enterprise = await createEnterprise(saJson, sa.project_id, signupUrlName, enterpriseToken);
+				await setSetting(db, 'enterprise_name', enterprise.name);
+				await setSetting(db, 'setup_step', '3');
+				return { step: 3, enterpriseName: enterprise.name };
+			} catch (e) {
+				return { step: 2, error: `Failed to create enterprise: ${e instanceof Error ? e.message : String(e)}` };
+			}
+		}
+	}
 
 	const currentStep = await getSetting(db, 'setup_step');
 	return { step: parseInt(currentStep || '1') };
@@ -40,7 +58,7 @@ export const actions: Actions = {
 		return { success: true, step: 2 };
 	},
 
-	'create-enterprise': async ({ platform }) => {
+	'create-enterprise': async ({ platform, url }) => {
 		if (!platform?.env?.DB) return fail(500, { error: 'Platform not available' });
 
 		const db = getDb(platform.env.DB);
@@ -49,12 +67,14 @@ export const actions: Actions = {
 
 		try {
 			const sa = parseServiceAccount(saJson);
-			const enterprise = await createEnterprise(saJson, sa.project_id);
-			await setSetting(db, 'enterprise_name', enterprise.name);
-			await setSetting(db, 'setup_step', '3');
-			return { success: true, step: 3, enterpriseName: enterprise.name };
+			const callbackUrl = `${url.origin}/setup`;
+			const signup = await createSignupUrl(saJson, sa.project_id, callbackUrl);
+			await setSetting(db, 'signup_url_name', signup.name);
+			// Redirect user to Google's enterprise signup page
+			throw redirect(302, signup.url);
 		} catch (e) {
-			return fail(500, { error: `Failed to create enterprise: ${e instanceof Error ? e.message : String(e)}` });
+			if (e instanceof Response || (e as any)?.status === 302) throw e;
+			return fail(500, { error: `Failed to create signup URL: ${e instanceof Error ? e.message : String(e)}` });
 		}
 	},
 

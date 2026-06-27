@@ -3,6 +3,7 @@
 	import Button from '$lib/components/Button.svelte';
 	import Input from '$lib/components/Input.svelte';
 	import Badge from '$lib/components/Badge.svelte';
+	import TimezoneSelect from '$lib/components/TimezoneSelect.svelte';
 
 	let { data, form } = $props();
 	let showCreate = $state(false);
@@ -88,7 +89,7 @@
 
 				<div>
 					<label for="timezone" class="mb-1 block text-sm font-medium">Timezone</label>
-					<Input type="text" name="timezone" id="timezone" value={data.timezone} />
+					<TimezoneSelect value={data.timezone} />
 				</div>
 
 				<Button type="submit">Create Schedule</Button>

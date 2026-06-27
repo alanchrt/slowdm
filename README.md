@@ -31,7 +31,7 @@ That's it. The CLI handles Cloudflare login, D1 database creation, migrations, s
 For subsequent updates:
 
 ```sh
-npx slowdm deploy    # idempotent: ensures resources, deploys
+npx slowdm update    # idempotent: ensures resources, deploys
 ```
 
 ### Google Cloud setup
@@ -76,7 +76,7 @@ GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
 | Command | Description |
 |---|---|
 | `npm run setup` | First-time setup (create DB, set secrets, build, deploy) |
-| `npm run deploy` | Ensure resources, build, deploy (ongoing) |
+| `npm run update` | Ensure resources, build, deploy (ongoing) |
 | `npm run deploy:secrets` | Update Cloudflare secrets |
 | `npm run dev` | Start local dev server |
 | `npm run db:generate` | Generate migration from schema changes |
