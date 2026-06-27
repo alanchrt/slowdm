@@ -1,8 +1,17 @@
 {
 	"name": "slowdm",
-	"private": true,
 	"version": "0.0.1",
+	"description": "Personal MDM for managing boundaries with Android devices",
 	"type": "module",
+	"bin": {
+		"slowdm": "./bin/cli.mjs"
+	},
+	"files": [
+		"bin/",
+		"dist/",
+		"drizzle/",
+		"wrangler.jsonc"
+	],
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
@@ -15,7 +24,8 @@
 		"db:migrate:remote": "wrangler d1 migrations apply slowdm-db --remote",
 		"setup": "./deploy.sh setup",
 		"deploy": "./deploy.sh deploy",
-		"deploy:secrets": "./deploy.sh secrets"
+		"deploy:secrets": "./deploy.sh secrets",
+		"prepublishOnly": "npm run build && cp -r .svelte-kit/cloudflare dist"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.1",

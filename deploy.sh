@@ -10,10 +10,15 @@ check_prereqs() {
 }
 
 ensure_auth() {
-  if ! npx wrangler whoami >/dev/null 2>&1; then
-    echo "  Logging in to Cloudflare..."
+  if npx wrangler whoami 2>&1 | grep -qi "not authenticated"; then
+    echo "  You need to log in to Cloudflare."
     npx wrangler login
+    if npx wrangler whoami 2>&1 | grep -qi "not authenticated"; then
+      echo "  ERROR: Cloudflare login failed. Run 'npx wrangler login' manually."
+      exit 1
+    fi
   fi
+  echo "  Cloudflare authenticated."
 }
 
 ensure_deps() {
