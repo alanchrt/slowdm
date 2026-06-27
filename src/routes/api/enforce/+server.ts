@@ -4,7 +4,8 @@ import { getDb } from '$lib/server/db';
 import { getSetting } from '$lib/server/db/seed';
 import { enforce } from '$lib/server/scheduler/enforce';
 
-export const POST: RequestHandler = async ({ platform }) => {
+export const POST: RequestHandler = async ({ platform, locals }) => {
+	if (!locals.authenticated) return json({ error: 'Unauthorized' }, { status: 401 });
 	if (!platform?.env?.DB) return json({ error: 'DB not available' }, { status: 500 });
 
 	const db = getDb(platform.env.DB);
