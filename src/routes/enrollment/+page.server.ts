@@ -4,6 +4,7 @@ import { getDb } from '$lib/server/db';
 import { devices, policies } from '$lib/server/db/schema';
 import { getSetting } from '$lib/server/db/seed';
 import { createEnrollmentToken } from '$lib/server/amapi/enrollment';
+import QRCode from 'qrcode-svg';
 
 export const load: PageServerLoad = async ({ platform }) => {
 	if (!platform?.env?.DB) return { policies: [] };
@@ -41,9 +42,17 @@ export const actions: Actions = {
 				currentPolicyName: policyName || 'unrestricted'
 			});
 
+			const qrSvg = new QRCode({
+				content: token.qrCode,
+				padding: 4,
+				width: 256,
+				height: 256,
+				ecl: 'M'
+			}).svg();
+
 			return {
 				success: true,
-				qrCode: token.qrCode,
+				qrSvg,
 				tokenValue: token.value,
 				expiresAt: token.expirationTimestamp
 			};

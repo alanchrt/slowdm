@@ -54,12 +54,17 @@ export const settings = sqliteTable('settings', {
 
 export type PolicyConfig = {
 	backupDisabled?: boolean;
+	debuggingAllowed?: boolean;
+	unknownSourcesAllowed?: boolean;
 	tetheringDisabled?: boolean;
 	wifiConfigDisabled?: boolean;
 	allowedSsids?: string[];
 	appMode?: 'allowlist' | 'blocklist' | 'none';
 	allowedApps?: string[];
 	blockedApps?: string[];
+	alwaysOnVpnPackage?: string;
+	privateDnsMode?: 'off' | 'opportunistic' | 'strict';
+	privateDnsHost?: string;
 };
 
 export type Device = typeof devices.$inferSelect;

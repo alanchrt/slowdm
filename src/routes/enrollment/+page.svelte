@@ -17,7 +17,7 @@
 		<div class="rounded-md bg-red-50 p-3 text-sm text-red-600">{form.error}</div>
 	{/if}
 
-	{#if form?.success && form?.qrCode}
+	{#if form?.success && form?.qrSvg}
 		<Card>
 			<h2 class="mb-4 text-lg font-semibold">Scan QR Code</h2>
 			<div class="space-y-4">
@@ -31,7 +31,7 @@
 					</ol>
 				</div>
 				<div class="flex justify-center">
-					<img src="data:image/png;base64,{form.qrCode}" alt="Enrollment QR Code" class="max-w-xs" />
+					{@html form.qrSvg}
 				</div>
 				<p class="text-center text-xs text-muted-foreground">
 					Expires: {form.expiresAt}

@@ -20,6 +20,17 @@ export function buildAmapiPolicy(config: PolicyConfig): AmapiPolicy {
 		policy.backupDisabled = true;
 	}
 
+	if (config.debuggingAllowed) {
+		policy.debuggingFeaturesAllowed = true;
+	}
+
+	if (config.unknownSourcesAllowed) {
+		policy.advancedSecurityOverrides = {
+			...(policy.advancedSecurityOverrides as Record<string, unknown>),
+			untrustedAppsPolicy: 'ALLOW_INSTALL_DEVICE_WIDE'
+		};
+	}
+
 	if (config.tetheringDisabled) {
 		policy.tetheringConfigDisabled = true;
 	}
@@ -55,6 +66,27 @@ export function buildAmapiPolicy(config: PolicyConfig): AmapiPolicy {
 			packageName: pkg,
 			installType: 'BLOCKED'
 		}));
+	}
+
+	if (config.alwaysOnVpnPackage) {
+		policy.alwaysOnVpnPackage = {
+			packageName: config.alwaysOnVpnPackage,
+			lockdownEnabled: true
+		};
+	}
+
+	if (config.privateDnsMode === 'strict' && config.privateDnsHost) {
+		policy.advancedSecurityOverrides = {
+			...(policy.advancedSecurityOverrides as Record<string, unknown>),
+			personalAppsThatCanReadWorkNotifications: [],
+			commonCriteriaMode: 'COMMON_CRITERIA_MODE_DISABLED'
+		};
+		policy.privateDnsMode = {
+			privateDnsMode: 'STRICT',
+			privateDnsHost: config.privateDnsHost
+		};
+	} else if (config.privateDnsMode === 'off') {
+		policy.privateDnsMode = { privateDnsMode: 'OFF' };
 	}
 
 	return policy;

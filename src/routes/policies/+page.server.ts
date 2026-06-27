@@ -24,6 +24,8 @@ export const actions: Actions = {
 
 		const config: PolicyConfig = {
 			backupDisabled: formData.get('backup_disabled') === 'on',
+			debuggingAllowed: formData.get('debugging_allowed') === 'on',
+			unknownSourcesAllowed: formData.get('unknown_sources_allowed') === 'on',
 			tetheringDisabled: formData.get('tethering_disabled') === 'on',
 			wifiConfigDisabled: formData.get('wifi_config_disabled') === 'on',
 			appMode: (formData.get('app_mode') as PolicyConfig['appMode']) || 'none',
@@ -38,7 +40,10 @@ export const actions: Actions = {
 			allowedSsids: (formData.get('allowed_ssids') as string)
 				?.split('\n')
 				.map((s) => s.trim())
-				.filter(Boolean) || []
+				.filter(Boolean) || [],
+			alwaysOnVpnPackage: (formData.get('always_on_vpn_package') as string)?.trim() || undefined,
+			privateDnsMode: (formData.get('private_dns_mode') as PolicyConfig['privateDnsMode']) || undefined,
+			privateDnsHost: (formData.get('private_dns_host') as string)?.trim() || undefined
 		};
 
 		const db = getDb(platform.env.DB);
@@ -61,6 +66,8 @@ export const actions: Actions = {
 
 		const config: PolicyConfig = {
 			backupDisabled: formData.get('backup_disabled') === 'on',
+			debuggingAllowed: formData.get('debugging_allowed') === 'on',
+			unknownSourcesAllowed: formData.get('unknown_sources_allowed') === 'on',
 			tetheringDisabled: formData.get('tethering_disabled') === 'on',
 			wifiConfigDisabled: formData.get('wifi_config_disabled') === 'on',
 			appMode: (formData.get('app_mode') as PolicyConfig['appMode']) || 'none',
@@ -75,7 +82,10 @@ export const actions: Actions = {
 			allowedSsids: (formData.get('allowed_ssids') as string)
 				?.split('\n')
 				.map((s) => s.trim())
-				.filter(Boolean) || []
+				.filter(Boolean) || [],
+			alwaysOnVpnPackage: (formData.get('always_on_vpn_package') as string)?.trim() || undefined,
+			privateDnsMode: (formData.get('private_dns_mode') as PolicyConfig['privateDnsMode']) || undefined,
+			privateDnsHost: (formData.get('private_dns_host') as string)?.trim() || undefined
 		};
 
 		const db = getDb(platform.env.DB);
