@@ -1,39 +1,119 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "=== SlowDM Deploy ==="
+COMMAND="${1:-}"
 
-# Check prerequisites
-command -v npx >/dev/null 2>&1 || { echo "Node.js/npm required"; exit 1; }
+# ── Helpers ──
 
-# Install dependencies
-echo "Installing dependencies..."
-npm install
+check_prereqs() {
+  command -v node >/dev/null 2>&1 || { echo "ERROR: Node.js required (https://nodejs.org)"; exit 1; }
+}
 
-# Create D1 database if it doesn't exist
-echo "Creating D1 database..."
-npx wrangler d1 create slowdm-db 2>/dev/null || echo "Database may already exist"
+ensure_auth() {
+  if ! npx wrangler whoami >/dev/null 2>&1; then
+    echo "  Logging in to Cloudflare..."
+    npx wrangler login
+  fi
+}
 
-echo ""
-echo "IMPORTANT: Update wrangler.jsonc with the database_id from above output."
-echo ""
+ensure_deps() {
+  [ -d node_modules ] || npm install --silent
+}
 
-# Run migrations
-echo "Applying migrations..."
-npx wrangler d1 migrations apply slowdm-db --remote
+ensure_resources() {
+  echo "  Ensuring Cloudflare resources..."
+  node scripts/ensure-resources.mjs
+}
 
-# Build
-echo "Building..."
-npm run build
+do_build_deploy() {
+  echo "  Building..."
+  npm run build
 
-# Deploy
-echo "Deploying to Cloudflare Pages..."
-npx wrangler pages deploy .svelte-kit/cloudflare
+  echo "  Deploying..."
+  npx wrangler pages deploy .svelte-kit/cloudflare --project-name slowdm
+}
 
-echo ""
-echo "=== Deploy complete ==="
-echo ""
-echo "Next steps:"
-echo "1. Set AUTH_PASSWORD secret: npx wrangler pages secret put AUTH_PASSWORD"
-echo "2. Set GOOGLE_SERVICE_ACCOUNT_JSON secret: npx wrangler pages secret put GOOGLE_SERVICE_ACCOUNT_JSON"
-echo "3. Visit your deployment URL to complete setup"
+# ── Commands ──
+
+do_setup() {
+  echo ""
+  echo "  SlowDM Setup"
+  echo "  ─────────────"
+  echo ""
+
+  check_prereqs
+  ensure_auth
+  ensure_deps
+  ensure_resources
+
+  echo ""
+  echo "  Setting secrets..."
+  echo ""
+  echo "  Choose a password for the SlowDM admin interface."
+  read -s -p "  Admin password: " AUTH_PASSWORD
+  echo ""
+  [ -z "$AUTH_PASSWORD" ] && { echo "  ERROR: Password cannot be empty."; exit 1; }
+  echo "$AUTH_PASSWORD" | npx wrangler pages secret put AUTH_PASSWORD --project-name slowdm 2>/dev/null || \
+  echo "$AUTH_PASSWORD" | npx wrangler secret put AUTH_PASSWORD 2>/dev/null || true
+  echo "  Password set."
+  echo ""
+
+  echo "  Paste your Google Cloud service account JSON key."
+  read -p "  Set service account now? [Y/n] " -r SA_CHOICE
+  if [[ "${SA_CHOICE:-Y}" =~ ^[Yy]?$ ]]; then
+    echo "  Paste the JSON (then press Enter):"
+    read -r SA_JSON
+    if [ -n "$SA_JSON" ]; then
+      echo "$SA_JSON" | npx wrangler pages secret put GOOGLE_SERVICE_ACCOUNT_JSON --project-name slowdm 2>/dev/null || \
+      echo "$SA_JSON" | npx wrangler secret put GOOGLE_SERVICE_ACCOUNT_JSON 2>/dev/null || true
+      echo "  Service account set."
+    fi
+  else
+    echo "  Skipped. Run './deploy.sh secrets' later."
+  fi
+  echo ""
+
+  do_build_deploy
+
+  echo ""
+  echo "  Setup complete! Visit your deployment URL above."
+  echo "  Future deploys: npm run deploy"
+  echo ""
+}
+
+do_deploy() {
+  check_prereqs
+  ensure_auth
+  ensure_deps
+  ensure_resources
+  do_build_deploy
+  echo ""
+  echo "  Deployed."
+  echo ""
+}
+
+do_secrets() {
+  ensure_auth
+  echo "  Set AUTH_PASSWORD:"
+  npx wrangler pages secret put AUTH_PASSWORD --project-name slowdm 2>/dev/null || \
+  npx wrangler secret put AUTH_PASSWORD 2>/dev/null
+  echo ""
+  echo "  Set GOOGLE_SERVICE_ACCOUNT_JSON:"
+  npx wrangler pages secret put GOOGLE_SERVICE_ACCOUNT_JSON --project-name slowdm 2>/dev/null || \
+  npx wrangler secret put GOOGLE_SERVICE_ACCOUNT_JSON 2>/dev/null
+}
+
+# ── Main ──
+
+case "$COMMAND" in
+  setup)   do_setup ;;
+  deploy)  do_deploy ;;
+  secrets) do_secrets ;;
+  *)
+    echo "Usage: ./deploy.sh <command>"
+    echo ""
+    echo "  setup    First-time setup (create resources, set secrets, deploy)"
+    echo "  deploy   Ensure resources, build, deploy (idempotent)"
+    echo "  secrets  Update secrets (password, service account)"
+    ;;
+esac
