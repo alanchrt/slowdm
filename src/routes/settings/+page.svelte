@@ -51,6 +51,37 @@
 	</Card>
 
 	<Card>
+		<h2 class="mb-4 text-lg font-semibold">Cloudflare Gateway</h2>
+
+		{#if data.cfConfigured}
+			<div class="space-y-4">
+				<dl class="text-sm">
+					<div class="flex justify-between">
+						<dt class="text-muted-foreground">Status</dt>
+						<dd class="text-green-600">Connected</dd>
+					</div>
+				</dl>
+				<form method="POST" action="?/update-team-name" class="space-y-2">
+					<div>
+						<label for="cf_team_name" class="mb-1 block text-sm font-medium">Zero Trust Team Name</label>
+						<Input type="text" name="cf_team_name" id="cf_team_name" value={data.cfTeamName} placeholder="your-team-name" required />
+						<p class="mt-1 text-xs text-muted-foreground">
+							Found in Zero Trust dashboard &rarr; Settings &rarr; Custom Pages. Used to auto-configure WARP on devices.
+						</p>
+					</div>
+					<Button type="submit" size="sm">Save</Button>
+				</form>
+			</div>
+		{:else}
+			<p class="text-sm text-muted-foreground">
+				Not configured. To enable DNS filtering, set <code>CF_API_TOKEN</code> and <code>CF_ACCOUNT_ID</code> secrets during setup or run:
+			</p>
+			<pre class="mt-2 rounded bg-muted p-3 text-xs">npx wrangler secret put CF_API_TOKEN
+npx wrangler secret put CF_ACCOUNT_ID</pre>
+		{/if}
+	</Card>
+
+	<Card>
 		<h2 class="mb-4 text-lg font-semibold">Actions</h2>
 		<div class="flex flex-wrap gap-3">
 			<form method="POST" action="?/enforce-now">

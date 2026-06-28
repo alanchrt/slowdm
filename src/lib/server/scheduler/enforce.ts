@@ -2,8 +2,9 @@ import { eq } from 'drizzle-orm';
 import type { Db } from '../db';
 import { devices, policies, schedules } from '../db/schema';
 import { getSetting } from '../db/seed';
-import { assignPolicy, pushPolicy } from '../amapi/enrollment';
+import { assignPolicy } from '../amapi/enrollment';
 import { pushPolicy as pushPolicyConfig } from '../amapi/policies';
+import { syncGatewayRules } from '../cloudflare/sync';
 
 function getCurrentTimeInTz(timezone: string): { dayOfWeek: number; hours: number; minutes: number } {
 	const now = new Date();
@@ -40,10 +41,8 @@ function isTimeInRange(
 	endMinutes: number
 ): boolean {
 	if (startMinutes <= endMinutes) {
-		// Same-day range: 08:00 - 22:00
 		return currentMinutes >= startMinutes && currentMinutes < endMinutes;
 	} else {
-		// Overnight range: 22:00 - 06:00
 		return currentMinutes >= startMinutes || currentMinutes < endMinutes;
 	}
 }
@@ -78,7 +77,6 @@ export async function evaluateDevicePolicy(
 
 		const daysOfWeek = schedule.daysOfWeek as number[];
 
-		// For overnight schedules, also check if yesterday was a scheduled day
 		const isOvernightCarryover =
 			startMinutes > endMinutes &&
 			currentMinutes < endMinutes &&
@@ -105,12 +103,11 @@ export async function evaluateDevicePolicy(
 
 	if (activePolices.length === 0) return null;
 
-	// Highest priority wins
 	activePolices.sort((a, b) => b.priority - a.priority);
 	return activePolices[0].policyName;
 }
 
-export async function enforce(db: Db, saJson: string) {
+export async function enforce(db: Db, saJson: string, cfApiToken?: string, cfAccountId?: string) {
 	const enterprise = await getSetting(db, 'enterprise_name');
 	if (!enterprise) return;
 
@@ -118,10 +115,11 @@ export async function enforce(db: Db, saJson: string) {
 	const defaultPolicy = (await getSetting(db, 'default_policy')) || 'unrestricted';
 
 	// Push all policies to AMAPI first
+	const cfTeamName = (await getSetting(db, 'cf_team_name')) || undefined;
 	const allPolicies = await db.select().from(policies);
 	for (const policy of allPolicies) {
 		try {
-			await pushPolicyConfig(saJson, enterprise, policy.name, policy.config);
+			await pushPolicyConfig(saJson, enterprise, policy.name, policy.config, cfTeamName);
 		} catch (e) {
 			console.error(`Failed to push policy ${policy.name}:`, e);
 		}
@@ -133,10 +131,14 @@ export async function enforce(db: Db, saJson: string) {
 		.from(devices)
 		.where(eq(devices.enrollmentStatus, 'enrolled'));
 
+	// Track which policy is active (for Gateway sync)
+	const activePolicyNames = new Set<string>();
+
 	for (const device of enrolledDevices) {
 		if (!device.amapiDeviceName) continue;
 
 		const activePolicyName = (await evaluateDevicePolicy(db, device.id, defaultTimezone)) || defaultPolicy;
+		activePolicyNames.add(activePolicyName);
 
 		if (activePolicyName !== device.currentPolicyName) {
 			try {
@@ -149,6 +151,20 @@ export async function enforce(db: Db, saJson: string) {
 			} catch (e) {
 				console.error(`Failed to assign policy for ${device.name}:`, e);
 			}
+		} else {
+			activePolicyNames.add(device.currentPolicyName!);
+		}
+	}
+
+	// Sync Gateway DNS rules — enable rules for active policies, disable others
+	const apiToken = cfApiToken;
+	const accountId = cfAccountId;
+
+	if (apiToken && accountId) {
+		try {
+			await syncGatewayRules(db, apiToken, accountId, allPolicies, activePolicyNames);
+		} catch (e) {
+			console.error('Failed to sync Gateway rules:', e);
 		}
 	}
 }

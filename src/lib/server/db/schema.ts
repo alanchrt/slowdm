@@ -65,6 +65,10 @@ export type PolicyConfig = {
 	alwaysOnVpnPackage?: string;
 	privateDnsMode?: 'off' | 'opportunistic' | 'strict';
 	privateDnsHost?: string;
+	dnsFilteringEnabled?: boolean;
+	dnsBlockCategories?: string[];
+	dnsBlockedDomains?: string[];
+	dnsAllowedDomains?: string[];
 };
 
 export type Device = typeof devices.$inferSelect;

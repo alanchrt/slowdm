@@ -43,8 +43,26 @@ export const actions: Actions = {
 				.filter(Boolean) || [],
 			alwaysOnVpnPackage: (formData.get('always_on_vpn_package') as string)?.trim() || undefined,
 			privateDnsMode: (formData.get('private_dns_mode') as PolicyConfig['privateDnsMode']) || undefined,
-			privateDnsHost: (formData.get('private_dns_host') as string)?.trim() || undefined
+			privateDnsHost: (formData.get('private_dns_host') as string)?.trim() || undefined,
+			dnsFilteringEnabled: formData.get('dns_filtering_enabled') === 'on',
+			dnsBlockCategories: [
+				'adult', 'gambling', 'malware', 'phishing', 'socialMedia',
+				'streaming', 'gaming', 'drugs', 'cryptomining', 'doh'
+			].filter((cat) => formData.get(`dns_cat_${cat}`) === 'on'),
+			dnsBlockedDomains: (formData.get('dns_blocked_domains') as string)
+				?.split('\n')
+				.map((s) => s.trim())
+				.filter(Boolean) || [],
+			dnsAllowedDomains: (formData.get('dns_allowed_domains') as string)
+				?.split('\n')
+				.map((s) => s.trim())
+				.filter(Boolean) || []
 		};
+
+		// Auto-set WARP as always-on VPN when DNS filtering is enabled
+		if (config.dnsFilteringEnabled && !config.alwaysOnVpnPackage) {
+			config.alwaysOnVpnPackage = 'com.cloudflare.onedotonedotonedotone';
+		}
 
 		const db = getDb(platform.env.DB);
 
@@ -85,8 +103,26 @@ export const actions: Actions = {
 				.filter(Boolean) || [],
 			alwaysOnVpnPackage: (formData.get('always_on_vpn_package') as string)?.trim() || undefined,
 			privateDnsMode: (formData.get('private_dns_mode') as PolicyConfig['privateDnsMode']) || undefined,
-			privateDnsHost: (formData.get('private_dns_host') as string)?.trim() || undefined
+			privateDnsHost: (formData.get('private_dns_host') as string)?.trim() || undefined,
+			dnsFilteringEnabled: formData.get('dns_filtering_enabled') === 'on',
+			dnsBlockCategories: [
+				'adult', 'gambling', 'malware', 'phishing', 'socialMedia',
+				'streaming', 'gaming', 'drugs', 'cryptomining', 'doh'
+			].filter((cat) => formData.get(`dns_cat_${cat}`) === 'on'),
+			dnsBlockedDomains: (formData.get('dns_blocked_domains') as string)
+				?.split('\n')
+				.map((s) => s.trim())
+				.filter(Boolean) || [],
+			dnsAllowedDomains: (formData.get('dns_allowed_domains') as string)
+				?.split('\n')
+				.map((s) => s.trim())
+				.filter(Boolean) || []
 		};
+
+		// Auto-set WARP as always-on VPN when DNS filtering is enabled
+		if (config.dnsFilteringEnabled && !config.alwaysOnVpnPackage) {
+			config.alwaysOnVpnPackage = 'com.cloudflare.onedotonedotonedotone';
+		}
 
 		const db = getDb(platform.env.DB);
 		await db

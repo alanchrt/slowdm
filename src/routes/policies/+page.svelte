@@ -8,19 +8,24 @@
 	let editingId = $state<number | null>(null);
 	let createAppMode = $state('none');
 	let createDnsMode = $state('');
-
-	function getEditAppMode(policyId: number): string {
-		const policy = data.policies.find((p) => p.id === policyId);
-		return policy?.config.appMode ?? 'none';
-	}
-
-	function getEditDnsMode(policyId: number): string {
-		const policy = data.policies.find((p) => p.id === policyId);
-		return policy?.config.privateDnsMode ?? '';
-	}
+	let createDnsFiltering = $state(false);
 
 	let editAppModes = $state<Record<number, string>>({});
 	let editDnsModes = $state<Record<number, string>>({});
+	let editDnsFiltering = $state<Record<number, boolean>>({});
+
+	const dnsCategories = [
+		{ key: 'adult', label: 'Adult Content' },
+		{ key: 'gambling', label: 'Gambling' },
+		{ key: 'socialMedia', label: 'Social Media' },
+		{ key: 'streaming', label: 'Streaming' },
+		{ key: 'gaming', label: 'Gaming' },
+		{ key: 'drugs', label: 'Drugs' },
+		{ key: 'malware', label: 'Malware' },
+		{ key: 'phishing', label: 'Phishing' },
+		{ key: 'cryptomining', label: 'Cryptomining' },
+		{ key: 'doh', label: 'DNS over HTTPS (DoH)' }
+	];
 </script>
 
 <svelte:head>
@@ -108,11 +113,46 @@
 					<textarea name="allowed_ssids" id="allowed_ssids" rows="2" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="HomeWiFi"></textarea>
 				</div>
 
-				<div>
-					<label for="always_on_vpn_package" class="mb-1 block text-sm font-medium">Always-On VPN (package name)</label>
-					<Input type="text" name="always_on_vpn_package" id="always_on_vpn_package" placeholder="com.wireguard.android" class="font-mono text-xs" />
-					<p class="mt-1 text-xs text-muted-foreground">Locks device to this VPN. All traffic blocked if VPN disconnects.</p>
+				<div class="border-t border-border pt-4">
+					<label class="flex items-center gap-2 text-sm font-medium">
+						<input type="checkbox" name="dns_filtering_enabled" class="rounded" bind:checked={createDnsFiltering} />
+						Enable DNS Filtering (Cloudflare Gateway)
+					</label>
+					<p class="mt-1 text-xs text-muted-foreground">Block content categories and domains via Cloudflare Gateway. Automatically locks device to Cloudflare WARP VPN.</p>
 				</div>
+
+				{#if createDnsFiltering}
+					<div>
+						<span class="mb-2 block text-sm font-medium">Block Categories</span>
+						<div class="flex flex-wrap gap-4">
+							{#each dnsCategories as cat}
+								<label class="flex items-center gap-1.5 text-sm">
+									<input type="checkbox" name="dns_cat_{cat.key}" class="rounded" />
+									{cat.label}
+								</label>
+							{/each}
+						</div>
+					</div>
+					<div>
+						<label for="dns_blocked_domains" class="mb-1 block text-sm font-medium">Blocked Domains (one per line)</label>
+						<textarea name="dns_blocked_domains" id="dns_blocked_domains" rows="2" class="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs" placeholder="tiktok.com"></textarea>
+					</div>
+					<div>
+						<label for="dns_allowed_domains" class="mb-1 block text-sm font-medium">Allowed Domains (override blocks, one per line)</label>
+						<textarea name="dns_allowed_domains" id="dns_allowed_domains" rows="2" class="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs" placeholder="wikipedia.org"></textarea>
+					</div>
+					<div class="rounded-md bg-blue-50 p-3 text-sm text-blue-800">
+						Cloudflare WARP will be set as the always-on VPN automatically. All device traffic will route through WARP, and Gateway DNS rules will be enforced.
+					</div>
+				{/if}
+
+				{#if !createDnsFiltering}
+					<div>
+						<label for="always_on_vpn_package" class="mb-1 block text-sm font-medium">Always-On VPN (package name)</label>
+						<Input type="text" name="always_on_vpn_package" id="always_on_vpn_package" placeholder="com.wireguard.android" class="font-mono text-xs" />
+						<p class="mt-1 text-xs text-muted-foreground">Locks device to this VPN. All traffic blocked if VPN disconnects.</p>
+					</div>
+				{/if}
 
 				<div>
 					<label for="private_dns_mode" class="mb-1 block text-sm font-medium">Private DNS</label>
@@ -151,6 +191,7 @@
 							editingId = policy.id;
 							editAppModes[policy.id] = policy.config.appMode ?? 'none';
 							editDnsModes[policy.id] = policy.config.privateDnsMode ?? '';
+							editDnsFiltering[policy.id] = policy.config.dnsFilteringEnabled ?? false;
 						}
 					}}>
 						{editingId === policy.id ? 'Cancel' : 'Edit'}
@@ -185,6 +226,9 @@
 					<span class="rounded bg-purple-100 px-2 py-1 text-purple-700">DNS: {policy.config.privateDnsHost}</span>
 				{:else if policy.config.privateDnsMode === 'off'}
 					<span class="rounded bg-yellow-100 px-2 py-1 text-yellow-700">DNS Off</span>
+				{/if}
+				{#if policy.config.dnsFilteringEnabled}
+					<span class="rounded bg-indigo-100 px-2 py-1 text-indigo-700">Gateway: {policy.config.dnsBlockCategories?.length ?? 0} categories</span>
 				{/if}
 				{#if policy.config.appMode === 'allowlist'}
 					<span class="rounded bg-blue-100 px-2 py-1 text-blue-700">Allowlist: {policy.config.allowedApps?.length ?? 0} apps</span>
@@ -247,11 +291,47 @@
 						<label class="mb-1 block text-sm font-medium">Allowed SSIDs</label>
 						<textarea name="allowed_ssids" rows="2" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">{policy.config.allowedSsids?.join('\n') ?? ''}</textarea>
 					</div>
-					<div>
-						<label class="mb-1 block text-sm font-medium">Always-On VPN (package name)</label>
-						<Input type="text" name="always_on_vpn_package" value={policy.config.alwaysOnVpnPackage ?? ''} placeholder="com.wireguard.android" class="font-mono text-xs" />
-						<p class="mt-1 text-xs text-muted-foreground">Locks device to this VPN. All traffic blocked if VPN disconnects.</p>
+					<div class="border-t border-border pt-4">
+						<label class="flex items-center gap-2 text-sm font-medium">
+							<input type="checkbox" name="dns_filtering_enabled" class="rounded" bind:checked={editDnsFiltering[policy.id]} />
+							Enable DNS Filtering (Cloudflare Gateway)
+						</label>
+						<p class="mt-1 text-xs text-muted-foreground">Automatically locks device to Cloudflare WARP VPN.</p>
 					</div>
+
+					{#if editDnsFiltering[policy.id]}
+						<div>
+							<span class="mb-2 block text-sm font-medium">Block Categories</span>
+							<div class="flex flex-wrap gap-4">
+								{#each dnsCategories as cat}
+									<label class="flex items-center gap-1.5 text-sm">
+										<input type="checkbox" name="dns_cat_{cat.key}" checked={policy.config.dnsBlockCategories?.includes(cat.key)} class="rounded" />
+										{cat.label}
+									</label>
+								{/each}
+							</div>
+						</div>
+						<div>
+							<label class="mb-1 block text-sm font-medium">Blocked Domains</label>
+							<textarea name="dns_blocked_domains" rows="2" class="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs">{policy.config.dnsBlockedDomains?.join('\n') ?? ''}</textarea>
+						</div>
+						<div>
+							<label class="mb-1 block text-sm font-medium">Allowed Domains (override blocks)</label>
+							<textarea name="dns_allowed_domains" rows="2" class="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs">{policy.config.dnsAllowedDomains?.join('\n') ?? ''}</textarea>
+						</div>
+						<div class="rounded-md bg-blue-50 p-3 text-sm text-blue-800">
+							Cloudflare WARP will be set as the always-on VPN automatically.
+						</div>
+					{/if}
+
+					{#if !editDnsFiltering[policy.id]}
+						<div>
+							<label class="mb-1 block text-sm font-medium">Always-On VPN (package name)</label>
+							<Input type="text" name="always_on_vpn_package" value={policy.config.alwaysOnVpnPackage ?? ''} placeholder="com.wireguard.android" class="font-mono text-xs" />
+							<p class="mt-1 text-xs text-muted-foreground">Locks device to this VPN. All traffic blocked if VPN disconnects.</p>
+						</div>
+					{/if}
+
 					<div>
 						<label class="mb-1 block text-sm font-medium">Private DNS</label>
 						<select name="private_dns_mode" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" bind:value={editDnsModes[policy.id]}>
@@ -267,6 +347,7 @@
 							<Input type="text" name="private_dns_host" value={policy.config.privateDnsHost ?? ''} placeholder="dns.google" class="font-mono text-xs" />
 						</div>
 					{/if}
+
 					<Button type="submit">Save Changes</Button>
 				</form>
 			{/if}

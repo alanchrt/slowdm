@@ -62,7 +62,43 @@ do_setup() {
   echo "  Password set."
   echo ""
 
-  echo ""
+  # Gateway setup (optional)
+  read -p "  Enable DNS filtering (Cloudflare Gateway)? [y/N] " -r GW_CHOICE
+  if [[ "${GW_CHOICE}" =~ ^[Yy]$ ]]; then
+    # Auto-detect account ID
+    CF_ACCOUNT=$(npx wrangler whoami 2>&1 | grep -oP '(?<=id: )[0-9a-f]+' | head -1)
+    if [ -z "$CF_ACCOUNT" ]; then
+      echo "  Could not detect account ID automatically."
+      echo "  Find it in the Cloudflare dashboard URL: dash.cloudflare.com/<account-id>"
+      read -p "  Cloudflare account ID: " -r CF_ACCOUNT
+    else
+      echo "  Detected account ID: $CF_ACCOUNT"
+    fi
+
+    if [ -n "$CF_ACCOUNT" ]; then
+      echo "$CF_ACCOUNT" | npx wrangler secret put CF_ACCOUNT_ID 2>/dev/null || true
+    fi
+
+    echo ""
+    echo "  Create an API token with these permissions:"
+    echo "    - Account > Zero Trust: Edit"
+    echo "    - Account > Account Settings: Read"
+    echo ""
+    echo "  Opening Cloudflare dashboard..."
+
+    # Try to open browser
+    TOKEN_URL="https://dash.cloudflare.com/profile/api-tokens"
+    xdg-open "$TOKEN_URL" 2>/dev/null || open "$TOKEN_URL" 2>/dev/null || echo "  Visit: $TOKEN_URL"
+    echo ""
+    read -p "  Paste the API token: " -r CF_TOKEN
+    if [ -n "$CF_TOKEN" ]; then
+      echo "$CF_TOKEN" | npx wrangler secret put CF_API_TOKEN 2>/dev/null || true
+      echo "  CF_API_TOKEN set."
+    fi
+    echo ""
+    echo "  After deploy, set your Zero Trust team name in Settings."
+    echo ""
+  fi
 
   do_build_deploy
 

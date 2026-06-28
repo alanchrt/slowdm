@@ -3,7 +3,7 @@ import { amapiRequest } from './client';
 
 type AmapiPolicy = Record<string, unknown>;
 
-export function buildAmapiPolicy(config: PolicyConfig): AmapiPolicy {
+export function buildAmapiPolicy(config: PolicyConfig, cfTeamName?: string): AmapiPolicy {
 	const policy: AmapiPolicy = {
 		// Always allow system updates
 		systemUpdate: { type: 'WINDOWED', startMinutes: 120, endMinutes: 300 },
@@ -53,14 +53,11 @@ export function buildAmapiPolicy(config: PolicyConfig): AmapiPolicy {
 	if (config.appMode === 'allowlist' && config.allowedApps?.length) {
 		policy.applications = config.allowedApps.map((pkg) => ({
 			packageName: pkg,
-			installType: 'FORCE_INSTALLED',
+			installType: 'AVAILABLE',
 			defaultPermissionPolicy: 'GRANT'
 		}));
-		// Block everything else with kiosk-like restrictions
-		policy.kioskCustomization = {
-			powerButtonActions: 'POWER_BUTTON_AVAILABLE',
-			statusBar: 'NOTIFICATIONS_AND_SYSTEM_INFO_ENABLED'
-		};
+		// Whitelist mode: only listed apps can be installed from Play Store
+		policy.playStoreMode = 'WHITELIST';
 	} else if (config.appMode === 'blocklist' && config.blockedApps?.length) {
 		policy.applications = config.blockedApps.map((pkg) => ({
 			packageName: pkg,
@@ -73,6 +70,37 @@ export function buildAmapiPolicy(config: PolicyConfig): AmapiPolicy {
 			packageName: config.alwaysOnVpnPackage,
 			lockdownEnabled: true
 		};
+
+		// Force-install the VPN app
+		const apps = (policy.applications as Record<string, unknown>[]) || [];
+		const vpnAlreadyListed = apps.some(
+			(a) => a.packageName === config.alwaysOnVpnPackage
+		);
+		if (!vpnAlreadyListed) {
+			apps.push({
+				packageName: config.alwaysOnVpnPackage,
+				installType: 'FORCE_INSTALLED',
+				defaultPermissionPolicy: 'GRANT'
+			});
+			policy.applications = apps;
+		}
+
+		// Auto-configure WARP to connect to the Zero Trust org
+		if (config.alwaysOnVpnPackage === 'com.cloudflare.onedotonedotonedotone' && cfTeamName) {
+			const warpApp = (policy.applications as Record<string, unknown>[]).find(
+				(a) => a.packageName === 'com.cloudflare.onedotonedotonedotone'
+			);
+			if (warpApp) {
+				warpApp.managedConfiguration = {
+					organization: cfTeamName,
+					service_mode: 'warp',
+					switch_locked: true,
+					auto_connect: 'Enabled',
+					support_url: '',
+					onboarding: false
+				};
+			}
+		}
 	}
 
 	if (config.privateDnsMode === 'strict' && config.privateDnsHost) {
@@ -96,8 +124,9 @@ export async function pushPolicy(
 	saJson: string,
 	enterprise: string,
 	policyName: string,
-	config: PolicyConfig
+	config: PolicyConfig,
+	cfTeamName?: string
 ): Promise<unknown> {
-	const amapiPolicy = buildAmapiPolicy(config);
+	const amapiPolicy = buildAmapiPolicy(config, cfTeamName);
 	return amapiRequest(saJson, 'PATCH', `${enterprise}/policies/${policyName}`, amapiPolicy);
 }
