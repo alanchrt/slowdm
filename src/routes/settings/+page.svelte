@@ -54,30 +54,34 @@
 		<h2 class="mb-4 text-lg font-semibold">Cloudflare Gateway</h2>
 
 		{#if data.cfConfigured}
-			<div class="space-y-4">
-				<dl class="text-sm">
+			<dl class="space-y-2 text-sm">
+				<div class="flex justify-between">
+					<dt class="text-muted-foreground">Status</dt>
+					<dd class="text-green-600">Connected</dd>
+				</div>
+				{#if data.cfTeamName}
 					<div class="flex justify-between">
-						<dt class="text-muted-foreground">Status</dt>
-						<dd class="text-green-600">Connected</dd>
+						<dt class="text-muted-foreground">Team Name</dt>
+						<dd class="font-mono text-xs">{data.cfTeamName}</dd>
 					</div>
-				</dl>
-				<form method="POST" action="?/update-team-name" class="space-y-2">
-					<div>
-						<label for="cf_team_name" class="mb-1 block text-sm font-medium">Zero Trust Team Name</label>
-						<Input type="text" name="cf_team_name" id="cf_team_name" value={data.cfTeamName} placeholder="your-team-name" required />
-						<p class="mt-1 text-xs text-muted-foreground">
-							Found in Zero Trust dashboard &rarr; Settings &rarr; Custom Pages. Used to auto-configure WARP on devices.
-						</p>
+				{:else}
+					<div class="rounded-md bg-yellow-50 p-3 text-sm text-yellow-800">
+						Team name not set. Run <code>npm run setup</code> again or: <code>npx wrangler secret put CF_TEAM_NAME</code>
 					</div>
-					<Button type="submit" size="sm">Save</Button>
-				</form>
-			</div>
+				{/if}
+			</dl>
 		{:else}
-			<p class="text-sm text-muted-foreground">
-				Not configured. To enable DNS filtering, set <code>CF_API_TOKEN</code> and <code>CF_ACCOUNT_ID</code> secrets during setup or run:
+			<p class="mb-2 text-sm text-muted-foreground">
+				Not configured. Run <code>npm run setup</code> and select "Enable DNS filtering" to configure Gateway.
 			</p>
-			<pre class="mt-2 rounded bg-muted p-3 text-xs">npx wrangler secret put CF_API_TOKEN
-npx wrangler secret put CF_ACCOUNT_ID</pre>
+			<div class="rounded-md bg-blue-50 p-3 text-sm text-blue-800">
+				<p class="mb-1 font-medium">Before setup, you need to:</p>
+				<ol class="list-inside list-decimal space-y-1">
+					<li>Go to the <strong>Cloudflare Zero Trust dashboard</strong></li>
+					<li>Click <strong>Get Started</strong> and select the <strong>Free plan</strong></li>
+					<li>Choose a team name (this becomes your WARP org identifier)</li>
+				</ol>
+			</div>
 		{/if}
 	</Card>
 

@@ -65,38 +65,68 @@ do_setup() {
   # Gateway setup (optional)
   read -p "  Enable DNS filtering (Cloudflare Gateway)? [y/N] " -r GW_CHOICE
   if [[ "${GW_CHOICE}" =~ ^[Yy]$ ]]; then
-    # Auto-detect account ID
-    CF_ACCOUNT=$(npx wrangler whoami 2>&1 | grep -oP '(?<=id: )[0-9a-f]+' | head -1)
+    # Account ID (detect first, needed for URLs)
+    CF_ACCOUNT=$(npx wrangler whoami 2>&1 | grep -oP '[0-9a-f]{32}' | head -1)
+
+    echo ""
+    echo "  First, activate Cloudflare Zero Trust (if you haven't already):"
+    echo ""
+    echo "    1. Open the Zero Trust dashboard"
+    echo "    2. Click 'Get Started' and select the Free plan"
+    echo "    3. Choose a team name when prompted (e.g. 'myfamily')"
+    echo ""
+    ZT_URL="https://one.dash.cloudflare.com/${CF_ACCOUNT}"
+    xdg-open "$ZT_URL" 2>/dev/null || open "$ZT_URL" 2>/dev/null || echo "  Open: $ZT_URL"
+    echo ""
+    read -p "  Press Enter once Zero Trust is activated..." -r
     if [ -z "$CF_ACCOUNT" ]; then
-      echo "  Could not detect account ID automatically."
-      echo "  Find it in the Cloudflare dashboard URL: dash.cloudflare.com/<account-id>"
+      echo "  Find your account ID in the Cloudflare dashboard URL: dash.cloudflare.com/<account-id>"
       read -p "  Cloudflare account ID: " -r CF_ACCOUNT
     else
       echo "  Detected account ID: $CF_ACCOUNT"
     fi
-
     if [ -n "$CF_ACCOUNT" ]; then
-      echo "$CF_ACCOUNT" | npx wrangler secret put CF_ACCOUNT_ID 2>/dev/null || true
+      printf '%s' "$CF_ACCOUNT" | npx wrangler secret put CF_ACCOUNT_ID
     fi
 
+    # API token
     echo ""
     echo "  Create an API token with these permissions:"
     echo "    - Account > Zero Trust: Edit"
     echo "    - Account > Account Settings: Read"
     echo ""
-    echo "  Opening Cloudflare dashboard..."
-
-    # Try to open browser
-    TOKEN_URL="https://dash.cloudflare.com/profile/api-tokens"
-    xdg-open "$TOKEN_URL" 2>/dev/null || open "$TOKEN_URL" 2>/dev/null || echo "  Visit: $TOKEN_URL"
+    TOKEN_URL="https://dash.cloudflare.com/${CF_ACCOUNT}/api-tokens"
+    xdg-open "$TOKEN_URL" 2>/dev/null || open "$TOKEN_URL" 2>/dev/null || echo "  Open: $TOKEN_URL"
     echo ""
-    read -p "  Paste the API token: " -r CF_TOKEN
+    read -p "  Paste the API token (or Enter to skip if already set): " -r CF_TOKEN
     if [ -n "$CF_TOKEN" ]; then
-      echo "$CF_TOKEN" | npx wrangler secret put CF_API_TOKEN 2>/dev/null || true
+      printf '%s' "$CF_TOKEN" | npx wrangler secret put CF_API_TOKEN
       echo "  CF_API_TOKEN set."
     fi
+
+    # Team name — always prompt if we can, regardless of whether token was just entered
     echo ""
-    echo "  After deploy, set your Zero Trust team name in Settings."
+    echo "  Detecting Zero Trust team name..."
+    API_TOKEN="${CF_TOKEN}"
+    # If no token entered this run, try to read from curl test (won't work without token)
+    if [ -n "$API_TOKEN" ] && [ -n "$CF_ACCOUNT" ]; then
+      CF_TEAM=$(curl -sf -H "Authorization: Bearer $API_TOKEN" \
+        "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/access/organizations" 2>/dev/null \
+        | grep -oP '"auth_domain"\s*:\s*"[^"]+' | grep -oP '[^"]+$' | sed 's/\.cloudflareaccess\.com//' || true)
+    fi
+    if [ -n "${CF_TEAM:-}" ]; then
+      echo "  Detected team name: $CF_TEAM"
+    else
+      echo "  Could not auto-detect team name."
+      echo "  Your team name is the subdomain you chose during Zero Trust activation."
+      echo "  (e.g., if your dashboard shows myteam.cloudflareaccess.com, enter 'myteam')"
+      read -p "  Zero Trust team name: " -r CF_TEAM
+    fi
+    if [ -n "${CF_TEAM:-}" ]; then
+      printf '%s' "$CF_TEAM" | npx wrangler secret put CF_TEAM_NAME
+      echo "  CF_TEAM_NAME set."
+    fi
+
     echo ""
   fi
 

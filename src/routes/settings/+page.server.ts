@@ -9,11 +9,10 @@ export const load: PageServerLoad = async ({ platform }) => {
 	if (!platform?.env?.DB) return { timezone: '', enterprise: '', defaultPolicy: '', cfConfigured: false, cfTeamName: '' };
 	const db = getDb(platform.env.DB);
 
-	const [timezone, enterprise, defaultPolicy, cfTeamName] = await Promise.all([
+	const [timezone, enterprise, defaultPolicy] = await Promise.all([
 		getSetting(db, 'timezone'),
 		getSetting(db, 'enterprise_name'),
-		getSetting(db, 'default_policy'),
-		getSetting(db, 'cf_team_name')
+		getSetting(db, 'default_policy')
 	]);
 
 	return {
@@ -21,7 +20,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 		enterprise: enterprise || '',
 		defaultPolicy: defaultPolicy || 'unrestricted',
 		cfConfigured: !!(platform.env.CF_API_TOKEN && platform.env.CF_ACCOUNT_ID),
-		cfTeamName: cfTeamName || ''
+		cfTeamName: platform.env.CF_TEAM_NAME || ''
 	};
 };
 
@@ -40,20 +39,6 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
-	'update-team-name': async ({ request, platform }) => {
-		if (!platform?.env?.DB) return fail(500, { error: 'DB not available' });
-
-		const formData = await request.formData();
-		const teamName = (formData.get('cf_team_name') as string)?.trim();
-
-		if (!teamName) return fail(400, { error: 'Team name is required' });
-
-		const db = getDb(platform.env.DB);
-		await setSetting(db, 'cf_team_name', teamName);
-
-		return { success: true };
-	},
-
 	'enforce-now': async ({ platform }) => {
 		if (!platform?.env?.DB) return fail(500, { error: 'DB not available' });
 
@@ -64,7 +49,7 @@ export const actions: Actions = {
 		if (!saJson) return fail(400, { error: 'AMAPI not configured' });
 
 		try {
-			await enforce(db, saJson, platform.env.CF_API_TOKEN, platform.env.CF_ACCOUNT_ID);
+			await enforce(db, saJson, platform.env.CF_API_TOKEN, platform.env.CF_ACCOUNT_ID, platform.env.CF_TEAM_NAME);
 			return { enforced: true };
 		} catch (e) {
 			return fail(500, {

@@ -12,6 +12,7 @@ declare global {
 				GOOGLE_SERVICE_ACCOUNT_JSON?: string;
 				CF_API_TOKEN?: string;
 				CF_ACCOUNT_ID?: string;
+				CF_TEAM_NAME?: string;
 			};
 			cf?: CfProperties;
 			ctx?: ExecutionContext;

@@ -107,7 +107,7 @@ export async function evaluateDevicePolicy(
 	return activePolices[0].policyName;
 }
 
-export async function enforce(db: Db, saJson: string, cfApiToken?: string, cfAccountId?: string) {
+export async function enforce(db: Db, saJson: string, cfApiToken?: string, cfAccountId?: string, cfTeamNameEnv?: string) {
 	const enterprise = await getSetting(db, 'enterprise_name');
 	if (!enterprise) return;
 
@@ -115,7 +115,7 @@ export async function enforce(db: Db, saJson: string, cfApiToken?: string, cfAcc
 	const defaultPolicy = (await getSetting(db, 'default_policy')) || 'unrestricted';
 
 	// Push all policies to AMAPI first
-	const cfTeamName = (await getSetting(db, 'cf_team_name')) || undefined;
+	const cfTeamName = cfTeamNameEnv || (await getSetting(db, 'cf_team_name')) || undefined;
 	const allPolicies = await db.select().from(policies);
 	for (const policy of allPolicies) {
 		try {
