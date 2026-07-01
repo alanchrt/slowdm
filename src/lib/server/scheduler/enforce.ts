@@ -1,8 +1,8 @@
-import { eq } from 'drizzle-orm';
+import { eq, isNull } from 'drizzle-orm';
 import type { Db } from '../db';
 import { devices, policies, schedules } from '../db/schema';
 import { getSetting } from '../db/seed';
-import { assignPolicy } from '../amapi/enrollment';
+import { assignPolicy, listDevices } from '../amapi/enrollment';
 import { pushPolicy as pushPolicyConfig } from '../amapi/policies';
 import { syncGatewayRules } from '../cloudflare/sync';
 
@@ -107,12 +107,79 @@ export async function evaluateDevicePolicy(
 	return activePolices[0].policyName;
 }
 
+async function syncDeviceStatus(db: Db, saJson: string, enterprise: string) {
+	try {
+		const amapiDevices = await listDevices(saJson, enterprise);
+		const pendingDevices = await db
+			.select()
+			.from(devices)
+			.where(eq(devices.enrollmentStatus, 'pending'));
+
+		if (pendingDevices.length === 0) return;
+
+		// Build a map of known AMAPI device names for quick lookup
+		const knownAmapiNames = new Set(
+			(await db.select({ name: devices.amapiDeviceName }).from(devices))
+				.map((d) => d.name)
+				.filter(Boolean)
+		);
+
+		for (const amapiDevice of amapiDevices) {
+			const amapiName = amapiDevice.name as string;
+			if (knownAmapiNames.has(amapiName)) continue;
+
+			// Try to match by enrollment token name
+			const tokenName = amapiDevice.enrollmentTokenName as string | undefined;
+			if (tokenName) {
+				const match = pendingDevices.find((d) => d.enrollmentTokenName === tokenName);
+				if (match) {
+					const policyName = (amapiDevice.appliedPolicyName as string)?.split('/').pop() || match.currentPolicyName;
+					await db
+						.update(devices)
+						.set({
+							amapiDeviceName: amapiName,
+							enrollmentStatus: 'enrolled',
+							currentPolicyName: policyName,
+							updatedAt: new Date().toISOString()
+						})
+						.where(eq(devices.id, match.id));
+					console.log(`Device synced: ${match.name} -> ${amapiName}`);
+					continue;
+				}
+			}
+
+			// Fallback: match by policy name if only one pending device has that policy
+			const appliedPolicy = (amapiDevice.appliedPolicyName as string)?.split('/').pop();
+			if (appliedPolicy) {
+				const matches = pendingDevices.filter((d) => d.currentPolicyName === appliedPolicy);
+				if (matches.length === 1) {
+					await db
+						.update(devices)
+						.set({
+							amapiDeviceName: amapiName,
+							enrollmentStatus: 'enrolled',
+							currentPolicyName: appliedPolicy,
+							updatedAt: new Date().toISOString()
+						})
+						.where(eq(devices.id, matches[0].id));
+					console.log(`Device synced (by policy): ${matches[0].name} -> ${amapiName}`);
+				}
+			}
+		}
+	} catch (e) {
+		console.error('Failed to sync device status:', e);
+	}
+}
+
 export async function enforce(db: Db, saJson: string, cfApiToken?: string, cfAccountId?: string, cfTeamNameEnv?: string) {
 	const enterprise = await getSetting(db, 'enterprise_name');
 	if (!enterprise) return;
 
 	const defaultTimezone = (await getSetting(db, 'timezone')) || 'America/New_York';
 	const defaultPolicy = (await getSetting(db, 'default_policy')) || 'unrestricted';
+
+	// Sync device status from AMAPI — match pending devices to enrolled ones
+	await syncDeviceStatus(db, saJson, enterprise);
 
 	// Push all policies to AMAPI first
 	const cfTeamName = cfTeamNameEnv || (await getSetting(db, 'cf_team_name')) || undefined;

@@ -4,6 +4,7 @@ export const devices = sqliteTable('devices', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
 	name: text('name').notNull(),
 	amapiDeviceName: text('amapi_device_name'),
+	enrollmentTokenName: text('enrollment_token_name'),
 	enrollmentStatus: text('enrollment_status').notNull().default('pending'),
 	currentPolicyName: text('current_policy_name'),
 	createdAt: text('created_at')

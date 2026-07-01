@@ -1,0 +1,1 @@
+ALTER TABLE `devices` ADD `enrollment_token_name` text;

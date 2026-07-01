@@ -35,9 +35,10 @@ export const actions: Actions = {
 		try {
 			const token = await createEnrollmentToken(saJson, enterprise, policyName || 'unrestricted');
 
-			// Create device record
+			// Create device record linked to enrollment token
 			await db.insert(devices).values({
 				name: deviceName,
+				enrollmentTokenName: token.name,
 				enrollmentStatus: 'pending',
 				currentPolicyName: policyName || 'unrestricted'
 			});
