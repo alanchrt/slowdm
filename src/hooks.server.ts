@@ -4,7 +4,7 @@ import { validateSession } from '$lib/server/auth';
 import { getSetting } from '$lib/server/db/seed';
 import { getDb } from '$lib/server/db';
 
-const PUBLIC_PATHS = ['/login', '/setup'];
+const PUBLIC_PATHS = ['/login', '/setup', '/api/device'];
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const platform = event.platform;
