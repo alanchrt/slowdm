@@ -33,6 +33,11 @@
 				<div class="flex justify-center">
 					{@html form.qrSvg}
 				</div>
+				<details class="text-center text-xs text-muted-foreground">
+					<summary class="cursor-pointer">Manual enrollment token</summary>
+					<p class="mt-2 select-all break-all font-mono">{form.tokenValue}</p>
+					<p class="mt-1">Enter this at the setup screen if the QR code doesn't work.</p>
+				</details>
 				<p class="text-center text-xs text-muted-foreground">
 					Expires: {form.expiresAt}
 				</p>

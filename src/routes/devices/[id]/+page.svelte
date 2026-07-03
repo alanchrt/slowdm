@@ -2,13 +2,9 @@
 	import Card from '$lib/components/Card.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import Badge from '$lib/components/Badge.svelte';
-	import { goto } from '$app/navigation';
-
 	let { data, form } = $props();
-
-	$effect(() => {
-		if (form?.deleted) goto('/devices');
-	});
+	let showDeleteConfirm = $state(false);
+	let deleteConfirmText = $state('');
 </script>
 
 <svelte:head>
@@ -74,8 +70,30 @@
 
 	<Card>
 		<h2 class="mb-4 text-lg font-semibold text-destructive">Danger Zone</h2>
-		<form method="POST" action="?/delete-device">
-			<Button type="submit" variant="destructive">Remove Device</Button>
-		</form>
+		{#if !showDeleteConfirm}
+			<Button variant="destructive" onclick={() => (showDeleteConfirm = true)}>Remove Device</Button>
+		{:else}
+			<div class="space-y-3">
+				<p class="text-sm text-muted-foreground">
+					Type <strong>delete</strong> to confirm removing <strong>{data.device.name}</strong>.
+				</p>
+				<input
+					type="text"
+					placeholder="delete"
+					bind:value={deleteConfirmText}
+					class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+				/>
+				<div class="flex gap-2">
+					<form method="POST" action="?/delete-device">
+						<Button type="submit" variant="destructive" disabled={deleteConfirmText.trim().toLowerCase() !== 'delete'}>
+							Permanently Remove
+						</Button>
+					</form>
+					<Button variant="secondary" onclick={() => { showDeleteConfirm = false; deleteConfirmText = ''; }}>
+						Cancel
+					</Button>
+				</div>
+			</div>
+		{/if}
 	</Card>
 </div>

@@ -2,6 +2,7 @@
 	import Card from '$lib/components/Card.svelte';
 	import Badge from '$lib/components/Badge.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import { page } from '$app/state';
 
 	let { data } = $props();
 </script>
@@ -11,6 +12,10 @@
 </svelte:head>
 
 <div class="space-y-6">
+	{#if page.url.searchParams.has('deleted')}
+		<div class="rounded-md bg-green-50 p-3 text-sm text-green-700">Device removed.</div>
+	{/if}
+
 	<div class="flex items-center justify-between">
 		<h1 class="text-2xl font-bold">Devices</h1>
 		<a href="/enrollment">

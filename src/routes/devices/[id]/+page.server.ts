@@ -1,5 +1,5 @@
 import type { PageServerLoad, Actions } from './$types';
-import { error, fail } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { getDb } from '$lib/server/db';
 import { devices, policies } from '$lib/server/db/schema';
@@ -52,6 +52,6 @@ export const actions: Actions = {
 		if (!platform?.env?.DB) return fail(500, { error: 'DB not available' });
 		const db = getDb(platform.env.DB);
 		await db.delete(devices).where(eq(devices.id, parseInt(params.id)));
-		return { deleted: true };
+		throw redirect(302, '/devices?deleted=1');
 	}
 };
