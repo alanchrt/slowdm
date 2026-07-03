@@ -1,0 +1,1 @@
+ALTER TABLE `devices` ADD `device_token` text;

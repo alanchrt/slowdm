@@ -171,24 +171,24 @@ async function syncDeviceStatus(db: Db, saJson: string, enterprise: string) {
 	}
 }
 
-export async function enforce(db: Db, saJson: string, cfApiToken?: string, cfAccountId?: string, cfTeamNameEnv?: string) {
+export async function enforce(db: Db, saJson?: string, cfApiToken?: string, cfAccountId?: string, cfTeamNameEnv?: string) {
 	const enterprise = await getSetting(db, 'enterprise_name');
-	if (!enterprise) return;
 
 	const defaultTimezone = (await getSetting(db, 'timezone')) || 'America/New_York';
 	const defaultPolicy = (await getSetting(db, 'default_policy')) || 'unrestricted';
 
-	// Sync device status from AMAPI — match pending devices to enrolled ones
-	await syncDeviceStatus(db, saJson, enterprise);
-
-	// Push all policies to AMAPI first
-	const cfTeamName = cfTeamNameEnv || (await getSetting(db, 'cf_team_name')) || undefined;
+	// AMAPI-specific: sync device status and push policies
 	const allPolicies = await db.select().from(policies);
-	for (const policy of allPolicies) {
-		try {
-			await pushPolicyConfig(saJson, enterprise, policy.name, policy.config, cfTeamName);
-		} catch (e) {
-			console.error(`Failed to push policy ${policy.name}:`, e);
+	if (saJson && enterprise) {
+		await syncDeviceStatus(db, saJson, enterprise);
+
+		const cfTeamName = cfTeamNameEnv || (await getSetting(db, 'cf_team_name')) || undefined;
+		for (const policy of allPolicies) {
+			try {
+				await pushPolicyConfig(saJson, enterprise, policy.name, policy.config, cfTeamName);
+			} catch (e) {
+				console.error(`Failed to push policy ${policy.name}:`, e);
+			}
 		}
 	}
 
@@ -202,24 +202,32 @@ export async function enforce(db: Db, saJson: string, cfApiToken?: string, cfAcc
 	const activePolicyNames = new Set<string>();
 
 	for (const device of enrolledDevices) {
-		if (!device.amapiDeviceName) continue;
-
 		const activePolicyName = (await evaluateDevicePolicy(db, device.id, defaultTimezone)) || defaultPolicy;
 		activePolicyNames.add(activePolicyName);
 
 		if (activePolicyName !== device.currentPolicyName) {
-			try {
-				await assignPolicy(saJson, device.amapiDeviceName, enterprise, activePolicyName);
+			if (device.amapiDeviceName) {
+				// AMAPI-managed device: push policy via Google API
+				try {
+					await assignPolicy(saJson, device.amapiDeviceName, enterprise, activePolicyName);
+					await db
+						.update(devices)
+						.set({ currentPolicyName: activePolicyName, updatedAt: new Date().toISOString() })
+						.where(eq(devices.id, device.id));
+					console.log(`Device ${device.name}: ${device.currentPolicyName} -> ${activePolicyName}`);
+				} catch (e) {
+					console.error(`Failed to assign policy for ${device.name}:`, e);
+				}
+			} else {
+				// Agent-managed device: just update DB (device pulls on next sync)
 				await db
 					.update(devices)
 					.set({ currentPolicyName: activePolicyName, updatedAt: new Date().toISOString() })
 					.where(eq(devices.id, device.id));
-				console.log(`Device ${device.name}: ${device.currentPolicyName} -> ${activePolicyName}`);
-			} catch (e) {
-				console.error(`Failed to assign policy for ${device.name}:`, e);
+				console.log(`Device ${device.name} (agent): ${device.currentPolicyName} -> ${activePolicyName}`);
 			}
-		} else {
-			activePolicyNames.add(device.currentPolicyName!);
+		} else if (device.currentPolicyName) {
+			activePolicyNames.add(device.currentPolicyName);
 		}
 	}
 

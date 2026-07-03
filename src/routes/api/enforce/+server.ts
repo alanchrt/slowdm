@@ -18,9 +18,7 @@ export const POST: RequestHandler = async ({ platform, locals, request }) => {
 
 	const db = getDb(platform.env.DB);
 	const saJson =
-		platform.env.GOOGLE_SERVICE_ACCOUNT_JSON || (await getSetting(db, 'service_account_json'));
-
-	if (!saJson) return json({ error: 'AMAPI not configured' }, { status: 400 });
+		platform.env.GOOGLE_SERVICE_ACCOUNT_JSON || (await getSetting(db, 'service_account_json')) || undefined;
 
 	try {
 		await enforce(db, saJson, platform.env.CF_API_TOKEN, platform.env.CF_ACCOUNT_ID, platform.env.CF_TEAM_NAME);
