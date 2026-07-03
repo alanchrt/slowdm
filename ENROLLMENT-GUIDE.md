@@ -27,7 +27,12 @@ Your Google account automatically backs up most things. Verify it's current:
 
 This covers: app data (for apps that support it), call history, contacts, device settings, SMS/MMS, photos/videos (if Google Photos backup is on), WiFi passwords.
 
-SlowDM enrolls devices in **company-owned with personal usage** mode. This means you get the normal Google restore flow during setup -- your apps, app data, home screen layout, and settings should restore from your Google backup. MDM policies (app restrictions, VPN, DNS, etc.) still apply device-wide.
+**Important: Fully managed mode skips the normal restore flow.** SlowDM enrolls devices with `PERSONAL_USAGE_DISALLOWED` so restrictions can't be bypassed via a personal profile. This means Android does NOT offer the "restore from backup" option during setup. You will need to:
+- Reinstall all apps manually from the Play Store
+- Sign back into each app individually
+- Some app data may be restored once you install the app and sign in (if the app uses Google's backup API), but don't count on it
+
+Your Google account data (contacts, calendar, photos, etc.) will sync back once you add your Google account to the device. But the app list, home screen layout, and app-specific data will not auto-restore.
 
 ### Things that DON'T auto-backup
 
@@ -70,8 +75,8 @@ Authy stores 2FA tokens in the cloud, but you need multi-device enabled to resto
 1. Check Google Dashboard (myaccount.google.com/dashboard) to see what's synced
 2. Open Google Photos and confirm recent photos are backed up
 3. Check Google Drive for any local files you care about
-4. Screenshot your home screen layout as a backup in case restore misses anything
-5. Note any sideloaded apps (not from Play Store) — those won't restore automatically
+4. Screenshot your home screen layout — it will not be restored
+5. Screenshot your app drawer — you'll reinstall everything manually since fully managed mode skips restore
 
 ---
 
