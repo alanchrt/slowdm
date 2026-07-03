@@ -15,7 +15,7 @@ export async function createEnrollmentToken(
 	const result = (await amapiRequest(saJson, 'POST', `${enterprise}/enrollmentTokens`, {
 		policyName: `${enterprise}/policies/${policyName}`,
 		duration: '86400s',
-		allowPersonalUsage: 'PERSONAL_USAGE_DISALLOWED'
+		allowPersonalUsage: 'ALLOW_PERSONAL_USAGE_ON_ORGANIZATION_OWNED_DEVICE'
 	})) as Record<string, string>;
 
 	return {
