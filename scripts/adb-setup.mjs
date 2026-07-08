@@ -3,7 +3,27 @@
 import { parseArgs } from 'util';
 import * as readline from 'readline';
 import { execFile } from 'child_process';
-import { access, writeFile, unlink } from 'fs/promises';
+import { access, readFile, writeFile, unlink } from 'fs/promises';
+
+// Load .env file if present (simple KEY=VALUE parser, no dependencies)
+try {
+  const envFile = await readFile('.env', 'utf-8');
+  for (const line of envFile.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq === -1) continue;
+    const key = trimmed.slice(0, eq).trim();
+    let value = trimmed.slice(eq + 1).trim();
+    // Strip surrounding quotes
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    if (!(key in process.env)) {
+      process.env[key] = value;
+    }
+  }
+} catch {}
 
 const { values: flags } = parseArgs({
   args: process.argv.slice(2),
@@ -95,9 +115,9 @@ async function setupDevice() {
   await checkNoAccounts();
 
   const serverUrl =
-    flags['server-url'] || (await prompt('Server URL (e.g., https://slowdm.example.com): '));
+    flags['server-url'] || process.env.SLOWDM_URL || (await prompt('Server URL (e.g., https://slowdm.example.com): '));
   const adminPassword =
-    flags['admin-password'] || (await prompt('Admin password: '));
+    flags['admin-password'] || process.env.SLOWDM_PASSWORD || (await prompt('Admin password: '));
   const deviceName = flags.name || (await prompt('Device name (e.g., pixel-9-pro): '));
   const apkPath = flags['apk-path'];
 

@@ -38,11 +38,13 @@
 					Run this from the SlowDM project directory on a computer with ADB:
 				</p>
 				<div class="relative">
-					<pre class="overflow-x-auto rounded-md bg-muted p-3 text-sm"><code>node scripts/adb-setup.mjs \
-  --server-url {form.serverUrl || 'https://your-server.example.com'} \
-  --admin-password YOUR_PASSWORD \
-  --name "{form.deviceName}"</code></pre>
+					<pre class="overflow-x-auto rounded-md bg-muted p-3 text-sm"><code>node scripts/adb-setup.mjs --name "{form.deviceName}"</code></pre>
 				</div>
+				<p class="text-xs text-muted-foreground">
+					Set <code>SLOWDM_URL</code> and <code>SLOWDM_PASSWORD</code> in a <code>.env</code> file
+					(or pass <code>--server-url</code> and <code>--admin-password</code> flags).
+					The script will prompt for anything not provided.
+				</p>
 				<p class="text-xs text-muted-foreground">
 					This will install the APK, set device owner, and write the config automatically.
 					The device registered above won't be used — the script creates its own.
