@@ -17,6 +17,14 @@
     },
     "plugins": [
       "./plugins/device-admin-plugin"
-    ]
+    ],
+    "ios": {
+      "bundleIdentifier": "com.slowdm.agent"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "99035b4b-a96d-4ced-a803-7922369032e2"
+      }
+    }
   }
 }
