@@ -170,16 +170,12 @@ async function setupDevice() {
     process.exit(1);
   }
 
-  // Write config to device
+  // Write config to device (use /sdcard/Download/ which is world-readable)
   console.log('\nWriting config to device...');
   const config = JSON.stringify({ serverUrl, deviceId, deviceToken });
   const tmpFile = '/tmp/slowdm-config.json';
   await writeFile(tmpFile, config);
-  await adb('push', tmpFile, '/data/local/tmp/slowdm-config.json');
-  await adb('shell', 'run-as', PACKAGE, 'mkdir', '-p', `/data/data/${PACKAGE}/files`);
-  await adb('shell', 'cp', '/data/local/tmp/slowdm-config.json', `/data/data/${PACKAGE}/files/config.json`);
-  await adb('shell', 'run-as', PACKAGE, 'chmod', '600', `/data/data/${PACKAGE}/files/config.json`);
-  await adb('shell', 'rm', '/data/local/tmp/slowdm-config.json');
+  await adb('push', tmpFile, '/sdcard/Download/slowdm-config.json');
   await unlink(tmpFile);
 
   // Request battery optimization exemption

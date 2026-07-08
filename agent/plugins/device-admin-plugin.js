@@ -86,6 +86,7 @@ function addDeviceAdminReceiver(config) {
       'android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
       'android.permission.FOREGROUND_SERVICE',
       'android.permission.INTERNET',
+      'android.permission.READ_EXTERNAL_STORAGE',
     ];
 
     for (const perm of permissions) {
