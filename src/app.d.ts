@@ -13,6 +13,7 @@ declare global {
 				CF_API_TOKEN?: string;
 				CF_ACCOUNT_ID?: string;
 				CF_TEAM_NAME?: string;
+			PUBLIC_URL?: string;
 			};
 			cf?: CfProperties;
 			ctx?: ExecutionContext;

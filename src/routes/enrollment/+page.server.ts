@@ -2,9 +2,6 @@ import type { PageServerLoad, Actions } from './$types';
 import { fail } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db';
 import { devices, policies } from '$lib/server/db/schema';
-import { getSetting } from '$lib/server/db/seed';
-import { createEnrollmentToken } from '$lib/server/amapi/enrollment';
-import QRCode from 'qrcode-svg';
 
 export const load: PageServerLoad = async ({ platform }) => {
 	if (!platform?.env?.DB) return { policies: [] };
@@ -19,48 +16,26 @@ export const actions: Actions = {
 
 		const formData = await request.formData();
 		const deviceName = formData.get('device_name') as string;
-		const policyName = formData.get('policy_name') as string;
 
 		if (!deviceName) return fail(400, { error: 'Device name is required' });
 
 		const db = getDb(platform.env.DB);
-		const enterprise = await getSetting(db, 'enterprise_name');
-		const saJson =
-			platform.env.GOOGLE_SERVICE_ACCOUNT_JSON || (await getSetting(db, 'service_account_json'));
+		const deviceToken = crypto.randomUUID();
 
-		if (!enterprise || !saJson) {
-			return fail(400, { error: 'AMAPI not configured. Complete setup first.' });
-		}
+		const result = await db.insert(devices).values({
+			name: deviceName,
+			deviceToken,
+			enrollmentStatus: 'enrolled'
+		}).returning({ id: devices.id });
 
-		try {
-			const token = await createEnrollmentToken(saJson, enterprise, policyName || 'unrestricted');
+		const serverUrl = platform.env.PUBLIC_URL || '';
 
-			// Create device record linked to enrollment token
-			await db.insert(devices).values({
-				name: deviceName,
-				enrollmentTokenName: token.name,
-				enrollmentStatus: 'pending',
-				currentPolicyName: policyName || 'unrestricted'
-			});
-
-			const qrSvg = new QRCode({
-				content: token.qrCode,
-				padding: 4,
-				width: 256,
-				height: 256,
-				ecl: 'M'
-			}).svg();
-
-			return {
-				success: true,
-				qrSvg,
-				tokenValue: token.value,
-				expiresAt: token.expirationTimestamp
-			};
-		} catch (e) {
-			return fail(500, {
-				error: `Failed to create enrollment token: ${e instanceof Error ? e.message : String(e)}`
-			});
-		}
+		return {
+			success: true,
+			deviceId: result[0].id,
+			deviceName,
+			deviceToken,
+			serverUrl
+		};
 	}
 };
