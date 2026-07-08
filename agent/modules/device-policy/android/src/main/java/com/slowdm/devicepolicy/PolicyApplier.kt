@@ -1,8 +1,11 @@
 package com.slowdm.devicepolicy
 
+import android.app.AlarmManager
+import android.app.PendingIntent
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.os.UserManager
 import android.util.Log
@@ -11,6 +14,9 @@ import org.json.JSONObject
 
 object PolicyApplier {
     private const val TAG = "SlowDMApplier"
+    private const val SAFETY_ALARM_REQUEST_CODE = 0x5AFE
+    private const val SAFETY_TIMEOUT_MS = 23L * 60 * 60 * 1000 // 23 hours
+    const val ACTION_SAFETY_REENABLE_ADB = "com.slowdm.agent.SAFETY_REENABLE_ADB"
 
     fun apply(context: Context, configJson: String) {
         val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
@@ -32,9 +38,17 @@ object PolicyApplier {
         // User restrictions
         setRestriction(dpm, admin, UserManager.DISALLOW_CONFIG_TETHERING, config.optBoolean("tetheringDisabled", false))
         setRestriction(dpm, admin, UserManager.DISALLOW_CONFIG_WIFI, config.optBoolean("wifiConfigDisabled", false))
-        setRestriction(dpm, admin, UserManager.DISALLOW_DEBUGGING_FEATURES, !config.optBoolean("debuggingAllowed", true))
+        val debuggingBlocked = !config.optBoolean("debuggingAllowed", true)
+        setRestriction(dpm, admin, UserManager.DISALLOW_DEBUGGING_FEATURES, debuggingBlocked)
         setRestriction(dpm, admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES, !config.optBoolean("unknownSourcesAllowed", false))
         setRestriction(dpm, admin, UserManager.DISALLOW_FACTORY_RESET, config.optBoolean("backupDisabled", false))
+
+        // Safety net: if debugging is blocked, schedule a hard 23h alarm to re-enable it
+        if (debuggingBlocked) {
+            scheduleSafetyAlarm(context)
+        } else {
+            cancelSafetyAlarm(context)
+        }
 
         // App suspension
         val appMode = config.optString("appMode", "none")
@@ -102,5 +116,34 @@ object PolicyApplier {
     private fun jsonArrayToList(arr: JSONArray?): List<String> {
         if (arr == null) return emptyList()
         return (0 until arr.length()).map { arr.getString(it) }
+    }
+
+    private fun scheduleSafetyAlarm(context: Context) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            action = ACTION_SAFETY_REENABLE_ADB
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, SAFETY_ALARM_REQUEST_CODE, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val triggerAt = System.currentTimeMillis() + SAFETY_TIMEOUT_MS
+        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
+        Log.i(TAG, "Safety alarm set: ADB will be re-enabled in 23 hours")
+    }
+
+    private fun cancelSafetyAlarm(context: Context) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            action = ACTION_SAFETY_REENABLE_ADB
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, SAFETY_ALARM_REQUEST_CODE, intent,
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        )
+        if (pendingIntent != null) {
+            alarmManager.cancel(pendingIntent)
+            Log.i(TAG, "Safety alarm cancelled (debugging now allowed)")
+        }
     }
 }

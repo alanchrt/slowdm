@@ -1,6 +1,8 @@
 import type { PageServerLoad, Actions } from './$types';
 import { fail } from '@sveltejs/kit';
+import { eq } from 'drizzle-orm';
 import { getDb } from '$lib/server/db';
+import { policies } from '$lib/server/db/schema';
 import { getSetting, setSetting } from '$lib/server/db/seed';
 import { enforce } from '$lib/server/scheduler/enforce';
 import { redirect } from '@sveltejs/kit';
@@ -33,6 +35,14 @@ export const actions: Actions = {
 		const defaultPolicy = formData.get('default_policy') as string;
 
 		const db = getDb(platform.env.DB);
+
+		if (defaultPolicy) {
+			const policy = await db.select().from(policies).where(eq(policies.name, defaultPolicy)).limit(1);
+			if (policy[0] && policy[0].config.debuggingAllowed === false) {
+				return fail(400, { error: 'Default policy must allow debugging (ADB access)' });
+			}
+		}
+
 		if (timezone) await setSetting(db, 'timezone', timezone);
 		if (defaultPolicy) await setSetting(db, 'default_policy', defaultPolicy);
 

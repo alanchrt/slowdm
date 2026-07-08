@@ -45,6 +45,24 @@ export const actions: Actions = {
 		}
 
 		const db = getDb(platform.env.DB);
+
+		// Enforce: schedules that block debugging can't span more than 23 hours
+		const policy = await db.select().from(policies).where(eq(policies.id, policyId)).limit(1);
+		if (policy[0] && policy[0].config.debuggingAllowed === false) {
+			const [sh, sm] = startTime.split(':').map(Number);
+			const [eh, em] = endTime.split(':').map(Number);
+			let durationMin = (eh * 60 + em) - (sh * 60 + sm);
+			if (durationMin <= 0) durationMin += 24 * 60; // overnight
+			if (durationMin > 23 * 60) {
+				return fail(400, {
+					error: 'Schedules that block debugging cannot span more than 23 hours. You must leave at least 1 hour with ADB access.'
+				});
+			}
+			if (daysOfWeek.length === 7 && durationMin === 23 * 60) {
+				// 23h every day is fine — there's always a 1h gap
+			}
+		}
+
 		await db.insert(schedules).values({
 			policyId,
 			deviceId: deviceId ? parseInt(deviceId) : null,
