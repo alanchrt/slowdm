@@ -41,7 +41,7 @@
 					<pre class="overflow-x-auto rounded-md bg-muted p-3 text-sm"><code>node scripts/adb-setup.mjs \
   --server-url {form.serverUrl || 'https://your-server.example.com'} \
   --admin-password YOUR_PASSWORD \
-  --name {form.deviceName}</code></pre>
+  --name "{form.deviceName}"</code></pre>
 				</div>
 				<p class="text-xs text-muted-foreground">
 					This will install the APK, set device owner, and write the config automatically.
