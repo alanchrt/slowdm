@@ -38,7 +38,7 @@
 					Run this from the SlowDM project directory on a computer with ADB:
 				</p>
 				<div class="relative">
-					<pre class="overflow-x-auto rounded-md bg-muted p-3 text-sm"><code>bun scripts/adb-setup.ts \
+					<pre class="overflow-x-auto rounded-md bg-muted p-3 text-sm"><code>node scripts/adb-setup.mjs \
   --server-url {form.serverUrl || 'https://your-server.example.com'} \
   --admin-password YOUR_PASSWORD \
   --name {form.deviceName}</code></pre>

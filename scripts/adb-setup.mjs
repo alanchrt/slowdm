@@ -1,11 +1,12 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 
-import { $ } from 'bun';
 import { parseArgs } from 'util';
 import * as readline from 'readline';
+import { execFile } from 'child_process';
+import { access, writeFile, unlink } from 'fs/promises';
 
 const { values: flags } = parseArgs({
-  args: Bun.argv.slice(2),
+  args: process.argv.slice(2),
   options: {
     remove: { type: 'boolean', default: false },
     'server-url': { type: 'string' },
@@ -18,7 +19,7 @@ const { values: flags } = parseArgs({
 const PACKAGE = 'com.slowdm.agent';
 const RECEIVER = `${PACKAGE}/.devicepolicy.DeviceAdminReceiver`;
 
-async function prompt(question: string): Promise<string> {
+function prompt(question) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   return new Promise((resolve) => {
     rl.question(question, (answer) => {
@@ -28,19 +29,26 @@ async function prompt(question: string): Promise<string> {
   });
 }
 
-async function run(cmd: string): Promise<string> {
-  const result = await $`sh -c ${cmd}`.text();
-  return result.trim();
+function run(command, args) {
+  return new Promise((resolve, reject) => {
+    execFile(command, args, (error, stdout, stderr) => {
+      if (error) {
+        reject(new Error(stderr || error.message));
+      } else {
+        resolve(stdout.trim());
+      }
+    });
+  });
 }
 
-async function adb(args: string): Promise<string> {
-  return run(`adb ${args}`);
+function adb(...args) {
+  return run('adb', args);
 }
 
 async function checkPrerequisites() {
   // Check adb exists
   try {
-    await run('which adb');
+    await run('which', ['adb']);
   } catch {
     console.error('Error: adb not found in PATH. Install Android SDK platform-tools.');
     process.exit(1);
@@ -61,8 +69,8 @@ async function checkPrerequisites() {
   console.log(`Device: ${lines[0].split('\t')[0]}`);
 
   // Check Android version
-  const apiLevel = await adb('shell getprop ro.build.version.sdk');
-  const version = await adb('shell getprop ro.build.version.release');
+  const apiLevel = await adb('shell', 'getprop', 'ro.build.version.sdk');
+  const version = await adb('shell', 'getprop', 'ro.build.version.release');
   console.log(`Android ${version} (API ${apiLevel})`);
 
   if (parseInt(apiLevel) < 24) {
@@ -72,8 +80,7 @@ async function checkPrerequisites() {
 }
 
 async function checkNoAccounts() {
-  const accounts = await adb('shell dumpsys account');
-  // Look for "Accounts:" line with count > 0
+  const accounts = await adb('shell', 'dumpsys', 'account');
   const match = accounts.match(/Accounts:\s*(\d+)/);
   if (match && parseInt(match[1]) > 0) {
     console.error('Error: Device has accounts registered.');
@@ -92,11 +99,12 @@ async function setupDevice() {
   const adminPassword =
     flags['admin-password'] || (await prompt('Admin password: '));
   const deviceName = flags.name || (await prompt('Device name (e.g., pixel-9-pro): '));
-  const apkPath = flags['apk-path']!;
+  const apkPath = flags['apk-path'];
 
   // Check APK exists
-  const apkFile = Bun.file(apkPath);
-  if (!(await apkFile.exists())) {
+  try {
+    await access(apkPath);
+  } catch {
     console.error(`Error: APK not found at ${apkPath}`);
     console.error('Build it first: cd agent && eas build --platform android --profile production --local');
     process.exit(1);
@@ -122,18 +130,18 @@ async function setupDevice() {
     process.exit(1);
   }
 
-  const { deviceId } = (await registerRes.json()) as { deviceId: number };
+  const { deviceId } = await registerRes.json();
   console.log(`Registered as device #${deviceId}`);
 
   // Install APK
   console.log('\nInstalling APK...');
-  await adb(`install -r "${apkPath}"`);
+  await adb('install', '-r', apkPath);
   console.log('APK installed');
 
   // Set device owner
   console.log('\nSetting device owner...');
   try {
-    const result = await adb(`shell dpm set-device-owner ${RECEIVER}`);
+    const result = await adb('shell', 'dpm', 'set-device-owner', RECEIVER);
     console.log(result);
   } catch (e) {
     console.error('Error: Failed to set device owner.');
@@ -146,21 +154,21 @@ async function setupDevice() {
   console.log('\nWriting config to device...');
   const config = JSON.stringify({ serverUrl, deviceId, deviceToken });
   const tmpFile = '/tmp/slowdm-config.json';
-  await Bun.write(tmpFile, config);
-  await adb(`push ${tmpFile} /data/local/tmp/slowdm-config.json`);
-  // Move to app's files directory
-  await adb(`shell run-as ${PACKAGE} mkdir -p /data/data/${PACKAGE}/files`);
-  await adb(`shell cp /data/local/tmp/slowdm-config.json /data/data/${PACKAGE}/files/config.json`);
-  await adb(`shell run-as ${PACKAGE} chmod 600 /data/data/${PACKAGE}/files/config.json`);
-  await adb('shell rm /data/local/tmp/slowdm-config.json');
+  await writeFile(tmpFile, config);
+  await adb('push', tmpFile, '/data/local/tmp/slowdm-config.json');
+  await adb('shell', 'run-as', PACKAGE, 'mkdir', '-p', `/data/data/${PACKAGE}/files`);
+  await adb('shell', 'cp', '/data/local/tmp/slowdm-config.json', `/data/data/${PACKAGE}/files/config.json`);
+  await adb('shell', 'run-as', PACKAGE, 'chmod', '600', `/data/data/${PACKAGE}/files/config.json`);
+  await adb('shell', 'rm', '/data/local/tmp/slowdm-config.json');
+  await unlink(tmpFile);
 
   // Request battery optimization exemption
   console.log('\nRequesting battery optimization exemption...');
-  await adb(`shell dumpsys deviceidle whitelist +${PACKAGE}`);
+  await adb('shell', 'dumpsys', 'deviceidle', 'whitelist', `+${PACKAGE}`);
 
   // Launch app
   console.log('\nLaunching app...');
-  await adb(`shell am start -n ${PACKAGE}/.MainActivity`);
+  await adb('shell', 'am', 'start', '-n', `${PACKAGE}/.MainActivity`);
 
   console.log('\n--- Setup complete ---');
   console.log(`Device: ${deviceName} (#${deviceId})`);
@@ -175,17 +183,15 @@ async function removeDevice() {
 
   console.log('Removing device owner and uninstalling...');
 
-  // Remove device owner (this also clears all restrictions)
   try {
-    await adb(`shell dpm remove-active-admin ${RECEIVER}`);
+    await adb('shell', 'dpm', 'remove-active-admin', RECEIVER);
     console.log('Device owner removed');
   } catch (e) {
     console.error('Warning: Could not remove device owner:', String(e));
   }
 
-  // Uninstall
   try {
-    await adb(`shell pm uninstall ${PACKAGE}`);
+    await adb('shell', 'pm', 'uninstall', PACKAGE);
     console.log('App uninstalled');
   } catch (e) {
     console.error('Warning: Could not uninstall:', String(e));
