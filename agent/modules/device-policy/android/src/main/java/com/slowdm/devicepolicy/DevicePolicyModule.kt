@@ -78,6 +78,24 @@ class DevicePolicyModule : Module() {
                 dpm.setUninstallBlocked(adminComponent, context.packageName, true)
             }
         }
+
+        Function("readConfigFile") {
+            // Check multiple ADB-push locations
+            val paths = listOf(
+                "/data/local/tmp/slowdm-config.json",
+                "/sdcard/Download/slowdm-config.json"
+            )
+            var result: String? = null
+            for (path in paths) {
+                val file = java.io.File(path)
+                if (file.exists() && file.canRead()) {
+                    result = file.readText()
+                    file.delete()
+                    break
+                }
+            }
+            result
+        }
     }
 
     private fun applyPolicyInternal(configJson: String) {

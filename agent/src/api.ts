@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+import { readConfigFile } from '../modules/device-policy';
 
 export type PolicyConfig = {
   backupDisabled?: boolean;
@@ -43,8 +43,6 @@ export type AppConfig = {
   deviceToken: string;
 };
 
-const CONFIG_EXTERNAL_PATH = `${FileSystem.cacheDirectory}../files/slowdm-config.json`;
-const CONFIG_SDCARD_PATH = '/sdcard/Download/slowdm-config.json';
 const STORAGE_KEY_CONFIG = 'slowdm_config';
 const STORAGE_KEY_SCHEDULES = 'slowdm_schedules';
 const STORAGE_KEY_LAST_SYNC = 'slowdm_last_sync';
@@ -55,20 +53,17 @@ export async function loadConfig(): Promise<AppConfig | null> {
   const stored = await AsyncStorage.getItem(STORAGE_KEY_CONFIG);
   if (stored) return JSON.parse(stored);
 
-  // Check for config file pushed by ADB (try multiple locations)
-  for (const configPath of [CONFIG_SDCARD_PATH, CONFIG_EXTERNAL_PATH]) {
-    try {
-      const info = await FileSystem.getInfoAsync(configPath);
-      if (info.exists) {
-        const content = await FileSystem.readAsStringAsync(configPath);
-        const config = JSON.parse(content);
-        await AsyncStorage.setItem(STORAGE_KEY_CONFIG, content);
-        await FileSystem.deleteAsync(configPath, { idempotent: true });
-        return config;
-      }
-    } catch (e) {
-      console.warn(`Failed to read config from ${configPath}:`, e);
+  // Check for config file pushed by ADB to /sdcard/Download/
+  // Uses native Java File API (reliable, no expo-file-system path issues)
+  try {
+    const content = readConfigFile();
+    if (content) {
+      const config = JSON.parse(content);
+      await AsyncStorage.setItem(STORAGE_KEY_CONFIG, content);
+      return config;
     }
+  } catch (e) {
+    console.warn('Failed to read config file:', e);
   }
 
   return null;

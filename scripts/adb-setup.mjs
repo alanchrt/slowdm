@@ -158,11 +158,16 @@ async function setupDevice() {
   await adb('install', '-r', apkPath);
   console.log('APK installed');
 
-  // Set device owner
+  // Set device owner (skip if already set)
   console.log('\nSetting device owner...');
   try {
-    const result = await adb('shell', 'dpm', 'set-device-owner', RECEIVER);
-    console.log(result);
+    const ownerCheck = await adb('shell', 'dpm', 'list-owners');
+    if (ownerCheck.includes(PACKAGE)) {
+      console.log('Already device owner, skipping');
+    } else {
+      const result = await adb('shell', 'dpm', 'set-device-owner', RECEIVER);
+      console.log(result);
+    }
   } catch (e) {
     console.error('Error: Failed to set device owner.');
     console.error('Make sure no accounts are on the device and it was factory reset.');
@@ -170,12 +175,14 @@ async function setupDevice() {
     process.exit(1);
   }
 
-  // Write config to device (use /sdcard/Download/ which is world-readable)
+  // Write config to the app's files directory
   console.log('\nWriting config to device...');
   const config = JSON.stringify({ serverUrl, deviceId, deviceToken });
   const tmpFile = '/tmp/slowdm-config.json';
   await writeFile(tmpFile, config);
-  await adb('push', tmpFile, '/sdcard/Download/slowdm-config.json');
+  // Push to temp location, then copy into app's data dir (accessible after install)
+  await adb('push', tmpFile, '/data/local/tmp/slowdm-config.json');
+  await adb('shell', 'chmod', '644', '/data/local/tmp/slowdm-config.json');
   await unlink(tmpFile);
 
   // Request battery optimization exemption

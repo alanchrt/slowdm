@@ -25,3 +25,7 @@ export function cancelAllAlarms(): void {
 export function blockSelfUninstall(): void {
   DevicePolicyModule.blockSelfUninstall();
 }
+
+export function readConfigFile(): string | null {
+  return DevicePolicyModule.readConfigFile();
+}
