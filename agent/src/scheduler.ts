@@ -1,6 +1,7 @@
 import type { ScheduleResponse, ScheduleEntry, PolicyConfig } from './api';
 
-function parseTime(time: string): { hours: number; minutes: number } {
+function parseTime(time: string | undefined): { hours: number; minutes: number } {
+  if (!time) return { hours: 0, minutes: 0 };
   const [h, m] = time.split(':').map(Number);
   return { hours: h, minutes: m };
 }
@@ -19,21 +20,21 @@ function isTimeInRange(current: number, start: number, end: number): boolean {
 
 function getCurrentTimeInTz(timezone: string): { dayOfWeek: number; hours: number; minutes: number } {
   const now = new Date();
-  const formatted = now.toLocaleString('en-US', {
-    timeZone: timezone,
-    hour12: false,
-    weekday: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+
+  // Use Intl.DateTimeFormat for reliable cross-platform parsing
+  const dayFormatter = new Intl.DateTimeFormat('en-US', { timeZone: timezone, weekday: 'short' });
+  const hourFormatter = new Intl.DateTimeFormat('en-US', { timeZone: timezone, hour: 'numeric', hour12: false });
+  const minuteFormatter = new Intl.DateTimeFormat('en-US', { timeZone: timezone, minute: 'numeric' });
 
   const dayMap: Record<string, number> = {
     Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
   };
 
-  const parts = formatted.split(', ');
-  const day = dayMap[parts[0]] ?? 0;
-  const [h, m] = parts[1].split(':').map(Number);
+  const dayStr = dayFormatter.format(now);
+  const day = dayMap[dayStr] ?? now.getDay();
+  const h = parseInt(hourFormatter.format(now), 10);
+  const m = parseInt(minuteFormatter.format(now), 10);
+
   return { dayOfWeek: day, hours: h, minutes: m };
 }
 
@@ -154,7 +155,8 @@ function getNextTransitionTimes(
     const [year, month, day] = dateStr.split('-').map(Number);
 
     const dow = new Date(baseDate.toLocaleString('en-US', { timeZone: schedule.timezone })).getDay();
-    if (!schedule.daysOfWeek.includes(dow)) continue;
+    if (!schedule.daysOfWeek?.includes(dow)) continue;
+    if (!schedule.startTime || !schedule.endTime) continue;
 
     const start = parseTime(schedule.startTime);
     const endTime = parseTime(schedule.endTime);
