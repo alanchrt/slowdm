@@ -56,6 +56,10 @@ export function evaluateSchedules(data: ScheduleResponse): ActivePolicyResult {
     const endMinutes = timeToMinutes(...Object.values(parseTime(schedule.endTime)) as [number, number]);
 
     const daysOfWeek = schedule.daysOfWeek;
+    const inRange = isTimeInRange(currentMinutes, startMinutes, endMinutes);
+    const dayMatch = daysOfWeek.includes(dayOfWeek);
+
+    console.log(`SlowDM: schedule=${schedule.policy.name} dow=${dayOfWeek} time=${hours}:${minutes} (${currentMinutes}min) range=${startMinutes}-${endMinutes} dayMatch=${dayMatch} inRange=${inRange}`);
 
     // Handle overnight carryover (e.g., schedule on Mon 22:00-06:00, currently Tue 03:00)
     const isOvernightCarryover =
@@ -64,7 +68,7 @@ export function evaluateSchedules(data: ScheduleResponse): ActivePolicyResult {
       daysOfWeek.includes((dayOfWeek + 6) % 7);
 
     if (
-      (daysOfWeek.includes(dayOfWeek) && isTimeInRange(currentMinutes, startMinutes, endMinutes)) ||
+      (dayMatch && inRange) ||
       isOvernightCarryover
     ) {
       active.push({

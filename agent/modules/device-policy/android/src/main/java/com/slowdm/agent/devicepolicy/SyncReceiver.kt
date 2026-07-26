@@ -17,7 +17,7 @@ class SyncReceiver : BroadcastReceiver() {
         private const val TAG = "SlowDMSync"
         const val ACTION_SYNC = "com.slowdm.agent.SYNC"
         private const val SYNC_REQUEST_CODE = 0x5900
-        private const val SYNC_INTERVAL_MS = 15L * 60 * 1000 // 15 minutes
+        private const val SYNC_INTERVAL_MS = 60L * 1000 // 1 minute
 
         fun schedulePeriodic(context: Context) {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager

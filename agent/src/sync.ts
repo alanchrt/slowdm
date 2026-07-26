@@ -47,6 +47,7 @@ export async function performSync(): Promise<SyncResult> {
 
     // Evaluate which policy should be active right now
     const active = evaluateSchedules(data);
+    console.log(`SlowDM: evaluated policy="${active.policyName}" schedules=${data.schedules.length}`);
 
     // Apply the policy via native module
     if (isDeviceOwner()) {
