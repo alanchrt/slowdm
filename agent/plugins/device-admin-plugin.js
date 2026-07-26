@@ -74,6 +74,20 @@ function addDeviceAdminReceiver(config) {
       });
     }
 
+    // Add SyncReceiver for periodic background sync via AlarmManager
+    const syncReceiverExists = app.receiver.some(
+      (r) => r.$?.['android:name'] === '.devicepolicy.SyncReceiver'
+    );
+
+    if (!syncReceiverExists) {
+      app.receiver.push({
+        $: {
+          'android:name': '.devicepolicy.SyncReceiver',
+          'android:exported': 'false',
+        },
+      });
+    }
+
     // Add ConfigReceiver for ADB config delivery
     const configReceiverExists = app.receiver.some(
       (r) => r.$?.['android:name'] === '.devicepolicy.ConfigReceiver'

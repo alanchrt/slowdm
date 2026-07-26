@@ -12,17 +12,26 @@ class BootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
-        Log.i(TAG, "Boot completed — re-applying last known policy")
+        Log.i(TAG, "Boot completed — re-applying last known policy and starting sync")
 
-        // Read last applied policy from SharedPreferences
         val prefs = context.getSharedPreferences("slowdm", Context.MODE_PRIVATE)
-        val lastPolicy = prefs.getString("last_policy_json", null) ?: return
 
-        try {
-            PolicyApplier.apply(context, lastPolicy)
-            Log.i(TAG, "Policy re-applied after boot")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to re-apply policy after boot: ${e.message}", e)
+        // Re-apply last known policy
+        val lastPolicy = prefs.getString("last_policy_json", null)
+        if (lastPolicy != null) {
+            try {
+                PolicyApplier.apply(context, lastPolicy)
+                Log.i(TAG, "Policy re-applied after boot")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to re-apply policy after boot: ${e.message}", e)
+            }
+        }
+
+        // Restart periodic sync alarm
+        val config = prefs.getString("config", null)
+        if (config != null) {
+            SyncReceiver.schedulePeriodic(context)
+            Log.i(TAG, "Sync alarm restarted after boot")
         }
     }
 }

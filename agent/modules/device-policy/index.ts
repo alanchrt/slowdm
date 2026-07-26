@@ -29,3 +29,7 @@ export function blockSelfUninstall(): void {
 export function readConfigFile(): string | null {
   return DevicePolicyModule.readConfigFile();
 }
+
+export function saveConfigAndStartSync(configJson: string): void {
+  DevicePolicyModule.saveConfigAndStartSync(configJson);
+}

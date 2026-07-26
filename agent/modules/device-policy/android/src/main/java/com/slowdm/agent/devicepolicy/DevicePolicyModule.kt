@@ -88,6 +88,16 @@ class DevicePolicyModule : Module() {
             val config = raw?.replace("\\\"", "\"")
             if (config != null && config.isNotEmpty()) config else null
         }
+
+        Function("saveConfigAndStartSync") { configJson: String ->
+            // Save config for native background sync
+            context.getSharedPreferences("slowdm", Context.MODE_PRIVATE)
+                .edit()
+                .putString("config", configJson)
+                .apply()
+            // Start periodic AlarmManager sync
+            SyncReceiver.schedulePeriodic(context)
+        }
     }
 
     private fun applyPolicyInternal(configJson: String) {

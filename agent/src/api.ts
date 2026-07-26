@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { readConfigFile } from '../modules/device-policy';
+import { readConfigFile, saveConfigAndStartSync } from '../modules/device-policy';
 
 export type PolicyConfig = {
   backupDisabled?: boolean;
@@ -52,15 +52,20 @@ const STORAGE_KEY_ACTIVE_POLICY = 'slowdm_active_policy';
 export async function loadConfig(): Promise<AppConfig | null> {
   // First check AsyncStorage
   const stored = await AsyncStorage.getItem(STORAGE_KEY_CONFIG);
-  if (stored) return JSON.parse(stored);
+  if (stored) {
+    // Ensure native background sync is running
+    saveConfigAndStartSync(stored);
+    return JSON.parse(stored);
+  }
 
-  // Check for config file pushed by ADB to /sdcard/Download/
-  // Uses native Java File API (reliable, no expo-file-system path issues)
+  // Check for config from ADB setup (stored in Android global settings)
   try {
     const content = readConfigFile();
     if (content) {
       const config = JSON.parse(content);
       await AsyncStorage.setItem(STORAGE_KEY_CONFIG, content);
+      // Save to SharedPreferences for native background sync and start periodic alarm
+      saveConfigAndStartSync(content);
       return config;
     }
   } catch (e) {
