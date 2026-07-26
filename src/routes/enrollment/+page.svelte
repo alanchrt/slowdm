@@ -83,6 +83,13 @@
 						</div>
 					</div>
 
+					<div class="mb-4 rounded-md bg-amber-50 p-3 text-sm text-amber-800">
+						<strong>Before factory reset:</strong> Back up SMS/MMS with
+						<a href="https://play.google.com/store/apps/details?id=com.riteshsahu.SMSBackupRestore" class="underline">SMS Backup &amp; Restore</a>.
+						Google backup cannot be restored when setting up device owner (no Google account during setup).
+						Also back up photos, 2FA authenticator codes, and any app data not cloud-synced.
+					</div>
+
 					<ol class="mt-4 list-inside list-decimal space-y-3 text-sm text-muted-foreground">
 						<li>
 							<strong>Factory reset</strong> the Android device. Do <em>not</em> add any Google account during setup.
