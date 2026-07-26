@@ -1,4 +1,4 @@
-package com.slowdm.devicepolicy
+package com.slowdm.agent.devicepolicy
 
 import android.app.AlarmManager
 import android.app.PendingIntent

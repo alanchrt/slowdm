@@ -1,11 +1,11 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
-group = 'com.slowdm.devicepolicy'
+group = 'com.slowdm.agent.devicepolicy'
 version = '0.1.0'
 
 android {
-    namespace "com.slowdm.devicepolicy"
+    namespace "com.slowdm.agent.devicepolicy"
     compileSdkVersion safeExtGet("compileSdkVersion", 35)
 
     defaultConfig {

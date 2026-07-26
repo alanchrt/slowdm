@@ -1,4 +1,4 @@
-package com.slowdm.devicepolicy
+package com.slowdm.agent.devicepolicy
 
 import android.app.AlarmManager
 import android.app.PendingIntent
@@ -80,21 +80,13 @@ class DevicePolicyModule : Module() {
         }
 
         Function("readConfigFile") {
-            // Check multiple ADB-push locations
-            val paths = listOf(
-                "/data/local/tmp/slowdm-config.json",
-                "/sdcard/Download/slowdm-config.json"
+            // Read config from Android global settings (written by ADB setup script)
+            val raw = android.provider.Settings.Global.getString(
+                context.contentResolver, "slowdm_config"
             )
-            var result: String? = null
-            for (path in paths) {
-                val file = java.io.File(path)
-                if (file.exists() && file.canRead()) {
-                    result = file.readText()
-                    file.delete()
-                    break
-                }
-            }
-            result
+            // ADB shell escaping may leave literal backslashes before quotes
+            val config = raw?.replace("\\\"", "\"")
+            if (config != null && config.isNotEmpty()) config else null
         }
     }
 

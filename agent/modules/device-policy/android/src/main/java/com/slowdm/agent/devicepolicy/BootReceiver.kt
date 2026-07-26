@@ -1,4 +1,4 @@
-package com.slowdm.devicepolicy
+package com.slowdm.agent.devicepolicy
 
 import android.content.BroadcastReceiver
 import android.content.Context

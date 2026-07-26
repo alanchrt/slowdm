@@ -3,7 +3,7 @@
 import { parseArgs } from 'util';
 import * as readline from 'readline';
 import { execFile } from 'child_process';
-import { access, readFile, writeFile, unlink } from 'fs/promises';
+import { access, readFile } from 'fs/promises';
 
 // Load .env file if present (simple KEY=VALUE parser, no dependencies)
 try {
@@ -175,15 +175,10 @@ async function setupDevice() {
     process.exit(1);
   }
 
-  // Write config to the app's files directory
+  // Write config to Android global settings (readable by app, no filesystem issues)
   console.log('\nWriting config to device...');
   const config = JSON.stringify({ serverUrl, deviceId, deviceToken });
-  const tmpFile = '/tmp/slowdm-config.json';
-  await writeFile(tmpFile, config);
-  // Push to temp location, then copy into app's data dir (accessible after install)
-  await adb('push', tmpFile, '/data/local/tmp/slowdm-config.json');
-  await adb('shell', 'chmod', '644', '/data/local/tmp/slowdm-config.json');
-  await unlink(tmpFile);
+  await adb('shell', `settings put global slowdm_config '${config}'`);
 
   // Request battery optimization exemption
   console.log('\nRequesting battery optimization exemption...');

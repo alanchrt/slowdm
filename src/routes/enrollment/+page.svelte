@@ -105,10 +105,7 @@
 						</li>
 						<li>
 							<strong>Write config to device:</strong>
-							<pre class="mt-1 rounded bg-muted p-2"><code>echo '{JSON.stringify({ serverUrl: form.serverUrl || 'https://your-server.example.com', deviceId: form.deviceId, deviceToken: form.deviceToken })}' &gt; /tmp/slowdm-config.json
-adb push /tmp/slowdm-config.json /data/local/tmp/slowdm-config.json
-adb shell mkdir -p /data/data/com.slowdm.agent/files
-adb shell cp /data/local/tmp/slowdm-config.json /data/data/com.slowdm.agent/files/slowdm-config.json</code></pre>
+							<pre class="mt-1 rounded bg-muted p-2"><code>adb shell settings put global slowdm_config '{JSON.stringify({ serverUrl: form.serverUrl || 'https://your-server.example.com', deviceId: form.deviceId, deviceToken: form.deviceToken })}'</code></pre>
 						</li>
 						<li>
 							<strong>Exempt from battery optimization:</strong>

@@ -74,6 +74,27 @@ function addDeviceAdminReceiver(config) {
       });
     }
 
+    // Add ConfigReceiver for ADB config delivery
+    const configReceiverExists = app.receiver.some(
+      (r) => r.$?.['android:name'] === '.devicepolicy.ConfigReceiver'
+    );
+
+    if (!configReceiverExists) {
+      app.receiver.push({
+        $: {
+          'android:name': '.devicepolicy.ConfigReceiver',
+          'android:exported': 'true',
+        },
+        'intent-filter': [
+          {
+            action: [
+              { $: { 'android:name': 'com.slowdm.agent.SET_CONFIG' } },
+            ],
+          },
+        ],
+      });
+    }
+
     // Add permissions
     if (!manifest.manifest['uses-permission']) {
       manifest.manifest['uses-permission'] = [];
