@@ -63,10 +63,24 @@ export const GET: RequestHandler = async ({ platform, request, params }) => {
 		})
 	);
 
+	// Check for manual policy override on this device
+	let activeOverride = null;
+	if (device[0].currentPolicyName) {
+		const overridePolicy = await db
+			.select()
+			.from(policies)
+			.where(eq(policies.name, device[0].currentPolicyName))
+			.limit(1);
+		if (overridePolicy[0]) {
+			activeOverride = { name: overridePolicy[0].name, config: overridePolicy[0].config };
+		}
+	}
+
 	return json({
 		defaultPolicy: defaultPolicyRow[0]
 			? { name: defaultPolicyRow[0].name, config: defaultPolicyRow[0].config }
 			: { name: 'unrestricted', config: {} },
+		activeOverride,
 		schedules: schedulesWithPolicies.filter((s) => s.policy !== null),
 		syncedAt: new Date().toISOString()
 	});

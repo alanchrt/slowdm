@@ -43,6 +43,7 @@ export type ActivePolicyResult = {
 };
 
 export function evaluateSchedules(data: ScheduleResponse): ActivePolicyResult {
+  // Manual override from web UI takes precedence when no schedule is active
   const active: { name: string; config: PolicyConfig; priority: number }[] = [];
 
   for (const schedule of data.schedules) {
@@ -74,6 +75,13 @@ export function evaluateSchedules(data: ScheduleResponse): ActivePolicyResult {
   }
 
   if (active.length === 0) {
+    // Use manual override if set, otherwise fall back to default
+    if (data.activeOverride) {
+      return {
+        policyName: data.activeOverride.name,
+        config: data.activeOverride.config,
+      };
+    }
     return {
       policyName: data.defaultPolicy.name,
       config: data.defaultPolicy.config,
