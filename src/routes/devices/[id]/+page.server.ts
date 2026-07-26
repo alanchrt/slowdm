@@ -26,6 +26,11 @@ export const actions: Actions = {
 		const policyName = formData.get('policy_name') as string;
 		const db = getDb(platform.env.DB);
 
+		const policy = await db.select().from(policies).where(eq(policies.name, policyName)).limit(1);
+		if (policy[0] && policy[0].config.debuggingAllowed === false) {
+			return fail(400, { error: 'Cannot manually apply a policy that blocks debugging. Use a schedule with a time limit instead.' });
+		}
+
 		const device = await db.select().from(devices).where(eq(devices.id, parseInt(params.id))).limit(1);
 		if (!device[0]) return fail(404, { error: 'Device not found' });
 
