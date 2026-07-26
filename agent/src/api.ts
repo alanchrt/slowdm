@@ -33,7 +33,6 @@ export type ScheduleEntry = {
 
 export type ScheduleResponse = {
   defaultPolicy: { name: string; config: PolicyConfig };
-  activeOverride: { name: string; config: PolicyConfig } | null;
   schedules: ScheduleEntry[];
   syncedAt: string;
 };

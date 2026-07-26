@@ -216,10 +216,9 @@ class DevicePolicyModule : Module() {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             action = ALARM_ACTION
             putExtra(EXTRA_POLICY_JSON, policyJson)
-            putExtra("trigger_time", triggerAtMillis)
         }
 
-        val requestCode = triggerAtMillis.toInt() // Unique per alarm time
+        val requestCode = (triggerAtMillis % Int.MAX_VALUE).toInt()
         val pendingIntent = PendingIntent.getBroadcast(
             context, requestCode, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -228,13 +227,36 @@ class DevicePolicyModule : Module() {
         alarmManager.setExactAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent
         )
-        Log.i(TAG, "Alarm scheduled for $triggerAtMillis")
+
+        // Track request code for cancellation
+        val prefs = context.getSharedPreferences("slowdm", Context.MODE_PRIVATE)
+        val codes = prefs.getStringSet("alarm_codes", mutableSetOf())!!.toMutableSet()
+        codes.add(requestCode.toString())
+        prefs.edit().putStringSet("alarm_codes", codes).apply()
+
+        Log.i(TAG, "Alarm scheduled for $triggerAtMillis (code=$requestCode)")
     }
 
     private fun cancelAllAlarmsInternal() {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        // Cancel a range of known request codes (we use trigger time as code)
-        // Since we can't enumerate PendingIntents, we rely on re-scheduling overwriting them
-        Log.i(TAG, "All alarms logically cancelled (will be overwritten on next sync)")
+        val prefs = context.getSharedPreferences("slowdm", Context.MODE_PRIVATE)
+        val codes = prefs.getStringSet("alarm_codes", mutableSetOf())!!
+
+        for (codeStr in codes) {
+            val code = codeStr.toIntOrNull() ?: continue
+            val intent = Intent(context, AlarmReceiver::class.java).apply {
+                action = ALARM_ACTION
+            }
+            val pendingIntent = PendingIntent.getBroadcast(
+                context, code, intent,
+                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+            )
+            if (pendingIntent != null) {
+                alarmManager.cancel(pendingIntent)
+            }
+        }
+
+        prefs.edit().putStringSet("alarm_codes", mutableSetOf()).apply()
+        Log.i(TAG, "Cancelled ${codes.size} transition alarms")
     }
 }

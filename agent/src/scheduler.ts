@@ -76,13 +76,6 @@ export function evaluateSchedules(data: ScheduleResponse): ActivePolicyResult {
   }
 
   if (active.length === 0) {
-    // Use manual override if set, otherwise fall back to default
-    if (data.activeOverride) {
-      return {
-        policyName: data.activeOverride.name,
-        config: data.activeOverride.config,
-      };
-    }
     return {
       policyName: data.defaultPolicy.name,
       config: data.defaultPolicy.config,

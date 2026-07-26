@@ -149,13 +149,7 @@ class SyncReceiver : BroadcastReceiver() {
     }
 
     private fun getOverrideOrDefault(data: JSONObject): JSONObject? {
-        // Check for manual override
-        val override = data.optJSONObject("activeOverride")
-        if (override != null) {
-            return override.optJSONObject("config")
-        }
-        // Fall back to default
-        val default = data.optJSONObject("defaultPolicy")
-        return default?.optJSONObject("config")
+        val defaultPolicy = data.optJSONObject("defaultPolicy")
+        return defaultPolicy?.optJSONObject("config")
     }
 }
