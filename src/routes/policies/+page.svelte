@@ -70,6 +70,10 @@
 						<input type="checkbox" name="wifi_config_disabled" class="rounded" />
 						Lock WiFi Config
 					</label>
+					<label class="flex items-center gap-2 text-sm">
+						<input type="checkbox" name="disable_browser_doh" class="rounded" />
+						Disable Browser DoH
+					</label>
 				</div>
 
 				<div>
@@ -212,6 +216,10 @@
 						<label class="flex items-center gap-2 text-sm">
 							<input type="checkbox" name="wifi_config_disabled" checked={policy.config.wifiConfigDisabled} />
 							Lock WiFi
+						</label>
+						<label class="flex items-center gap-2 text-sm">
+							<input type="checkbox" name="disable_browser_doh" checked={policy.config.disableBrowserDoh} />
+							Disable Browser DoH
 						</label>
 					</div>
 					<div>

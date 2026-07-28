@@ -43,7 +43,8 @@ export const actions: Actions = {
 				.filter(Boolean) || [],
 			alwaysOnVpnPackage: (formData.get('always_on_vpn_package') as string)?.trim() || undefined,
 			privateDnsMode: (formData.get('private_dns_mode') as PolicyConfig['privateDnsMode']) || undefined,
-			privateDnsHost: (formData.get('private_dns_host') as string)?.trim() || undefined
+			privateDnsHost: (formData.get('private_dns_host') as string)?.trim() || undefined,
+			disableBrowserDoh: formData.get('disable_browser_doh') === 'on'
 		};
 
 		const db = getDb(platform.env.DB);
@@ -85,7 +86,8 @@ export const actions: Actions = {
 				.filter(Boolean) || [],
 			alwaysOnVpnPackage: (formData.get('always_on_vpn_package') as string)?.trim() || undefined,
 			privateDnsMode: (formData.get('private_dns_mode') as PolicyConfig['privateDnsMode']) || undefined,
-			privateDnsHost: (formData.get('private_dns_host') as string)?.trim() || undefined
+			privateDnsHost: (formData.get('private_dns_host') as string)?.trim() || undefined,
+			disableBrowserDoh: formData.get('disable_browser_doh') === 'on'
 		};
 
 		const db = getDb(platform.env.DB);

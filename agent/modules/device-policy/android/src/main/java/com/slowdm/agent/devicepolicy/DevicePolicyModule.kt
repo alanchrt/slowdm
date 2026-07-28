@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Bundle
 import android.os.UserManager
 import android.util.Log
 import expo.modules.kotlin.modules.Module
@@ -195,7 +196,69 @@ class DevicePolicyModule : Module() {
             }
         }
 
+        // Browser DoH
+        val disableDoh = config.optBoolean("disableBrowserDoh", false)
+        applyBrowserDohRestrictions(disableDoh)
+
         Log.i(TAG, "Policy applied successfully")
+    }
+
+    private val CHROMIUM_BROWSERS = listOf(
+        "com.android.chrome",
+        "com.brave.browser",
+        "com.microsoft.emmx",
+        "com.opera.browser",
+        "com.vivaldi.browser"
+    )
+
+    private val FIREFOX_BROWSERS = listOf(
+        "org.mozilla.firefox",
+        "org.mozilla.fenix",
+        "org.mozilla.focus"
+    )
+
+    private fun applyBrowserDohRestrictions(disable: Boolean) {
+        // Chromium browsers: DnsOverHttpsMode = "off"
+        for (pkg in CHROMIUM_BROWSERS) {
+            try {
+                if (disable) {
+                    val restrictions = Bundle().apply {
+                        putString("DnsOverHttpsMode", "off")
+                    }
+                    dpm.setApplicationRestrictions(adminComponent, pkg, restrictions)
+                } else {
+                    dpm.setApplicationRestrictions(adminComponent, pkg, Bundle())
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to set DoH restriction for $pkg: ${e.message}")
+            }
+        }
+
+        // Firefox browsers: DNSOverHTTPS policy via managed config
+        for (pkg in FIREFOX_BROWSERS) {
+            try {
+                if (disable) {
+                    val restrictions = Bundle().apply {
+                        val dnsPolicy = Bundle().apply {
+                            putBoolean("Enabled", false)
+                            putBoolean("Locked", true)
+                        }
+                        putBundle("DNSOverHTTPS", dnsPolicy)
+                    }
+                    dpm.setApplicationRestrictions(adminComponent, pkg, restrictions)
+                } else {
+                    dpm.setApplicationRestrictions(adminComponent, pkg, Bundle())
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to set DoH restriction for $pkg: ${e.message}")
+            }
+        }
+
+        if (disable) {
+            Log.i(TAG, "Browser DoH restrictions applied")
+        } else {
+            Log.i(TAG, "Browser DoH restrictions cleared")
+        }
     }
 
     private fun unsuspendAll() {

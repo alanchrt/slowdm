@@ -67,6 +67,7 @@ export type PolicyConfig = {
 	alwaysOnVpnPackage?: string;
 	privateDnsMode?: 'off' | 'opportunistic' | 'strict';
 	privateDnsHost?: string;
+	disableBrowserDoh?: boolean;
 	// Legacy fields — DNS config now lives in settings table
 	dnsFilteringEnabled?: boolean;
 	dnsBlockCategories?: string[];
