@@ -15,19 +15,37 @@ export type GatewayRule = {
 
 // Content category IDs from Cloudflare Gateway
 // https://developers.cloudflare.com/cloudflare-one/policies/gateway/domain-categories/
+// Top-level content category IDs from Cloudflare Gateway
+// https://developers.cloudflare.com/cloudflare-one/policies/gateway/domain-categories/
+// Blocking a top-level category blocks all its subcategories
 export const DNS_CATEGORIES = {
-	adult: { id: 1, label: 'Adult Content' },
-	gambling: { id: 5, label: 'Gambling' },
-	malware: { id: 32, label: 'Malware' },
-	phishing: { id: 33, label: 'Phishing' },
-	socialMedia: { id: 52, label: 'Social Media' },
-	streaming: { id: 55, label: 'Streaming' },
-	gaming: { id: 12, label: 'Gaming' },
-	drugs: { id: 7, label: 'Drugs' },
-	newMalware: { id: 83, label: 'New Malware' },
-	spyware: { id: 84, label: 'Spyware' },
-	cryptomining: { id: 85, label: 'Cryptomining' },
-	doh: { id: 135, label: 'DNS over HTTPS (DoH)' }
+	ads: { id: 1, label: 'Ads' },
+	adultThemes: { id: 2, label: 'Adult Themes' },
+	businessEconomy: { id: 3, label: 'Business & Economy' },
+	education: { id: 6, label: 'Education' },
+	entertainment: { id: 7, label: 'Entertainment' },
+	gambling: { id: 8, label: 'Gambling' },
+	governmentPolitics: { id: 9, label: 'Government & Politics' },
+	health: { id: 10, label: 'Health' },
+	internetCommunication: { id: 12, label: 'Internet Communication' },
+	jobSearch: { id: 13, label: 'Job Search & Careers' },
+	miscellaneous: { id: 15, label: 'Miscellaneous' },
+	questionableContent: { id: 17, label: 'Questionable Content' },
+	realEstate: { id: 18, label: 'Real Estate' },
+	religion: { id: 19, label: 'Religion' },
+	safeForKids: { id: 20, label: 'Safe for Kids' },
+	securityThreats: { id: 21, label: 'Security Threats' },
+	shopping: { id: 22, label: 'Shopping & Auctions' },
+	societyLifestyle: { id: 24, label: 'Society & Lifestyle' },
+	sports: { id: 25, label: 'Sports' },
+	technology: { id: 26, label: 'Technology' },
+	travel: { id: 27, label: 'Travel' },
+	vehicles: { id: 28, label: 'Vehicles' },
+	violence: { id: 29, label: 'Violence' },
+	weather: { id: 30, label: 'Weather' },
+	alwaysBlocked: { id: 31, label: 'Always Blocked' },
+	securityRisks: { id: 32, label: 'Security Risks' },
+	cipa: { id: 34, label: 'CIPA Filter' }
 } as const;
 
 export type DnsCategoryKey = keyof typeof DNS_CATEGORIES;
@@ -81,35 +99,33 @@ export async function updateGatewayRule(
 	apiToken: string,
 	accountId: string,
 	ruleId: string,
-	updates: Partial<{
+	updates: {
 		name: string;
 		enabled: boolean;
-		traffic: string;
 		categories: DnsCategoryKey[];
 		blockedDomains: string[];
 		precedence: number;
-	}>
-): Promise<GatewayRule> {
-	const body: Record<string, unknown> = {};
-
-	if (updates.name !== undefined) body.name = updates.name;
-	if (updates.enabled !== undefined) body.enabled = updates.enabled;
-	if (updates.precedence !== undefined) body.precedence = updates.precedence;
-
-	if (updates.categories || updates.blockedDomains) {
-		body.traffic = buildTrafficExpression(
-			updates.categories ?? [],
-			updates.blockedDomains ?? []
-		);
 	}
-
-	if (updates.traffic) body.traffic = updates.traffic;
+): Promise<GatewayRule> {
+	const traffic = buildTrafficExpression(updates.categories, updates.blockedDomains);
 
 	return (await cfRequest(
 		apiToken,
 		'PUT',
 		`/accounts/${accountId}/gateway/rules/${ruleId}`,
-		body
+		{
+			name: updates.name,
+			description: 'Managed by SlowDM',
+			enabled: updates.enabled,
+			action: 'block',
+			filters: ['dns'],
+			traffic,
+			identity: '',
+			rule_settings: {
+				block_page_enabled: false
+			},
+			precedence: updates.precedence
+		}
 	)) as GatewayRule;
 }
 

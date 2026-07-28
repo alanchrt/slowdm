@@ -75,7 +75,11 @@ class DevicePolicyModule : Module() {
 
         Function("blockSelfUninstall") {
             if (dpm.isDeviceOwnerApp(context.packageName)) {
-                dpm.setUninstallBlocked(adminComponent, context.packageName, true)
+                try {
+                    dpm.setUninstallBlocked(adminComponent, context.packageName, true)
+                } catch (e: SecurityException) {
+                    Log.e(TAG, "blockSelfUninstall failed (component=${adminComponent.flattenToString()}): ${e.message}")
+                }
             }
         }
 
@@ -170,6 +174,10 @@ class DevicePolicyModule : Module() {
 
         // Private DNS
         val privateDnsMode = config.optString("privateDnsMode", "")
+        // Lock Private DNS settings when a mode is explicitly set
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            applyUserRestriction(UserManager.DISALLOW_CONFIG_PRIVATE_DNS, privateDnsMode.isNotEmpty())
+        }
         if (privateDnsMode.isNotEmpty() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             try {
                 when (privateDnsMode) {

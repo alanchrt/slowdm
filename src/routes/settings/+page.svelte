@@ -70,6 +70,58 @@
 					</div>
 				{/if}
 			</dl>
+
+			<form method="POST" action="?/update-dns" class="mt-4 space-y-4 border-t border-border pt-4">
+				<div>
+					<span class="mb-2 block text-sm font-medium">Block Categories</span>
+					<div class="flex flex-wrap gap-4">
+						{#each [
+							{ key: 'ads', label: 'Ads' },
+							{ key: 'adultThemes', label: 'Adult Themes' },
+							{ key: 'businessEconomy', label: 'Business & Economy' },
+							{ key: 'education', label: 'Education' },
+							{ key: 'entertainment', label: 'Entertainment' },
+							{ key: 'gambling', label: 'Gambling' },
+							{ key: 'governmentPolitics', label: 'Government & Politics' },
+							{ key: 'health', label: 'Health' },
+							{ key: 'internetCommunication', label: 'Internet Communication' },
+							{ key: 'jobSearch', label: 'Job Search & Careers' },
+							{ key: 'miscellaneous', label: 'Miscellaneous' },
+							{ key: 'questionableContent', label: 'Questionable Content' },
+							{ key: 'realEstate', label: 'Real Estate' },
+							{ key: 'religion', label: 'Religion' },
+							{ key: 'safeForKids', label: 'Safe for Kids' },
+							{ key: 'securityThreats', label: 'Security Threats' },
+							{ key: 'shopping', label: 'Shopping & Auctions' },
+							{ key: 'societyLifestyle', label: 'Society & Lifestyle' },
+							{ key: 'sports', label: 'Sports' },
+							{ key: 'technology', label: 'Technology' },
+							{ key: 'travel', label: 'Travel' },
+							{ key: 'vehicles', label: 'Vehicles' },
+							{ key: 'violence', label: 'Violence' },
+							{ key: 'weather', label: 'Weather' },
+							{ key: 'alwaysBlocked', label: 'Always Blocked' },
+							{ key: 'securityRisks', label: 'Security Risks' },
+							{ key: 'cipa', label: 'CIPA Filter' }
+						] as cat}
+							<label class="flex items-center gap-1.5 text-sm">
+								<input type="checkbox" name="dns_cat_{cat.key}" checked={data.dnsBlockCategories.includes(cat.key)} class="rounded" />
+								{cat.label}
+							</label>
+						{/each}
+					</div>
+				</div>
+				<div>
+					<label for="dns_blocked_domains" class="mb-1 block text-sm font-medium">Blocked Domains (one per line)</label>
+					<textarea name="dns_blocked_domains" id="dns_blocked_domains" rows="3" class="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs" placeholder="tiktok.com">{data.dnsBlockedDomains.join('\n')}</textarea>
+				</div>
+				<div>
+					<label for="dns_allowed_domains" class="mb-1 block text-sm font-medium">Allowed Domains (override blocks, one per line)</label>
+					<textarea name="dns_allowed_domains" id="dns_allowed_domains" rows="3" class="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs" placeholder="wikipedia.org">{data.dnsAllowedDomains.join('\n')}</textarea>
+				</div>
+				<p class="text-xs text-muted-foreground">These rules apply account-wide. Enable DNS filtering on individual policies to activate them.</p>
+				<Button type="submit">Save DNS Config</Button>
+			</form>
 		{:else}
 			<p class="mb-2 text-sm text-muted-foreground">
 				Not configured. Run <code>npm run setup</code> and select "Enable DNS filtering" to configure Gateway.

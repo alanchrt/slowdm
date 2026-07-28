@@ -8,7 +8,7 @@ import { syncGatewayRules } from '../cloudflare/sync';
 
 function getCurrentTimeInTz(timezone: string): { dayOfWeek: number; hours: number; minutes: number } {
 	const now = new Date();
-	const formatted = now.toLocaleString('en-US', {
+	const fmt = new Intl.DateTimeFormat('en-US', {
 		timeZone: timezone,
 		hour12: false,
 		weekday: 'short',
@@ -16,14 +16,19 @@ function getCurrentTimeInTz(timezone: string): { dayOfWeek: number; hours: numbe
 		minute: '2-digit'
 	});
 
+	const partsMap = Object.fromEntries(
+		fmt.formatToParts(now).map((p) => [p.type, p.value])
+	);
+
 	const dayMap: Record<string, number> = {
 		Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6
 	};
 
-	const parts = formatted.split(', ');
-	const day = dayMap[parts[0]] ?? 0;
-	const [h, m] = parts[1].split(':').map(Number);
-	return { dayOfWeek: day, hours: h, minutes: m };
+	return {
+		dayOfWeek: dayMap[partsMap.weekday] ?? 0,
+		hours: Number(partsMap.hour),
+		minutes: Number(partsMap.minute)
+	};
 }
 
 function parseTime(time: string): { hours: number; minutes: number } {
@@ -198,8 +203,9 @@ export async function enforce(db: Db, saJson?: string, cfApiToken?: string, cfAc
 		.from(devices)
 		.where(eq(devices.enrollmentStatus, 'enrolled'));
 
-	// Track which policy is active (for Gateway sync)
-	const activePolicyNames = new Set<string>();
+	// Track active policy names (for Gateway: enable if any has dnsFilteringEnabled)
+	// Always include default policy — it applies when no schedule is active
+	const activePolicyNames = new Set<string>([defaultPolicy]);
 
 	for (const device of enrolledDevices) {
 		const activePolicyName = (await evaluateDevicePolicy(db, device.id, defaultTimezone)) || defaultPolicy;
@@ -231,13 +237,10 @@ export async function enforce(db: Db, saJson?: string, cfApiToken?: string, cfAc
 		}
 	}
 
-	// Sync Gateway DNS rules — enable rules for active policies, disable others
-	const apiToken = cfApiToken;
-	const accountId = cfAccountId;
-
-	if (apiToken && accountId) {
+	// Sync Gateway DNS rules — always enabled when categories are configured
+	if (cfApiToken && cfAccountId) {
 		try {
-			await syncGatewayRules(db, apiToken, accountId, allPolicies, activePolicyNames);
+			await syncGatewayRules(db, cfApiToken, cfAccountId);
 		} catch (e) {
 			console.error('Failed to sync Gateway rules:', e);
 		}
