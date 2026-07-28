@@ -1,10 +1,7 @@
-import { eq, isNull } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import type { Db } from '../db';
 import { devices, policies, schedules } from '../db/schema';
 import { getSetting } from '../db/seed';
-import { assignPolicy, listDevices } from '../amapi/enrollment';
-import { pushPolicy as pushPolicyConfig } from '../amapi/policies';
-import { syncGatewayRules } from '../cloudflare/sync';
 
 function getCurrentTimeInTz(timezone: string): { dayOfWeek: number; hours: number; minutes: number } {
 	const now = new Date();
@@ -112,137 +109,24 @@ export async function evaluateDevicePolicy(
 	return activePolices[0].policyName;
 }
 
-async function syncDeviceStatus(db: Db, saJson: string, enterprise: string) {
-	try {
-		const amapiDevices = await listDevices(saJson, enterprise);
-		const pendingDevices = await db
-			.select()
-			.from(devices)
-			.where(eq(devices.enrollmentStatus, 'pending'));
-
-		if (pendingDevices.length === 0) return;
-
-		// Build a map of known AMAPI device names for quick lookup
-		const knownAmapiNames = new Set(
-			(await db.select({ name: devices.amapiDeviceName }).from(devices))
-				.map((d) => d.name)
-				.filter(Boolean)
-		);
-
-		for (const amapiDevice of amapiDevices) {
-			const amapiName = amapiDevice.name as string;
-			if (knownAmapiNames.has(amapiName)) continue;
-
-			// Try to match by enrollment token name
-			const tokenName = amapiDevice.enrollmentTokenName as string | undefined;
-			if (tokenName) {
-				const match = pendingDevices.find((d) => d.enrollmentTokenName === tokenName);
-				if (match) {
-					const policyName = (amapiDevice.appliedPolicyName as string)?.split('/').pop() || match.currentPolicyName;
-					await db
-						.update(devices)
-						.set({
-							amapiDeviceName: amapiName,
-							enrollmentStatus: 'enrolled',
-							currentPolicyName: policyName,
-							updatedAt: new Date().toISOString()
-						})
-						.where(eq(devices.id, match.id));
-					console.log(`Device synced: ${match.name} -> ${amapiName}`);
-					continue;
-				}
-			}
-
-			// Fallback: match by policy name if only one pending device has that policy
-			const appliedPolicy = (amapiDevice.appliedPolicyName as string)?.split('/').pop();
-			if (appliedPolicy) {
-				const matches = pendingDevices.filter((d) => d.currentPolicyName === appliedPolicy);
-				if (matches.length === 1) {
-					await db
-						.update(devices)
-						.set({
-							amapiDeviceName: amapiName,
-							enrollmentStatus: 'enrolled',
-							currentPolicyName: appliedPolicy,
-							updatedAt: new Date().toISOString()
-						})
-						.where(eq(devices.id, matches[0].id));
-					console.log(`Device synced (by policy): ${matches[0].name} -> ${amapiName}`);
-				}
-			}
-		}
-	} catch (e) {
-		console.error('Failed to sync device status:', e);
-	}
-}
-
-export async function enforce(db: Db, saJson?: string, cfApiToken?: string, cfAccountId?: string, cfTeamNameEnv?: string) {
-	const enterprise = await getSetting(db, 'enterprise_name');
-
+export async function enforce(db: Db) {
 	const defaultTimezone = (await getSetting(db, 'timezone')) || 'America/New_York';
 	const defaultPolicy = (await getSetting(db, 'default_policy')) || 'unrestricted';
 
-	// AMAPI-specific: sync device status and push policies
-	const allPolicies = await db.select().from(policies);
-	if (saJson && enterprise) {
-		await syncDeviceStatus(db, saJson, enterprise);
-
-		const cfTeamName = cfTeamNameEnv || (await getSetting(db, 'cf_team_name')) || undefined;
-		for (const policy of allPolicies) {
-			try {
-				await pushPolicyConfig(saJson, enterprise, policy.name, policy.config, cfTeamName);
-			} catch (e) {
-				console.error(`Failed to push policy ${policy.name}:`, e);
-			}
-		}
-	}
-
-	// Evaluate and assign for each enrolled device
 	const enrolledDevices = await db
 		.select()
 		.from(devices)
 		.where(eq(devices.enrollmentStatus, 'enrolled'));
 
-	// Track active policy names (for Gateway: enable if any has dnsFilteringEnabled)
-	// Always include default policy — it applies when no schedule is active
-	const activePolicyNames = new Set<string>([defaultPolicy]);
-
 	for (const device of enrolledDevices) {
 		const activePolicyName = (await evaluateDevicePolicy(db, device.id, defaultTimezone)) || defaultPolicy;
-		activePolicyNames.add(activePolicyName);
 
 		if (activePolicyName !== device.currentPolicyName) {
-			if (device.amapiDeviceName) {
-				// AMAPI-managed device: push policy via Google API
-				try {
-					await assignPolicy(saJson, device.amapiDeviceName, enterprise, activePolicyName);
-					await db
-						.update(devices)
-						.set({ currentPolicyName: activePolicyName, updatedAt: new Date().toISOString() })
-						.where(eq(devices.id, device.id));
-					console.log(`Device ${device.name}: ${device.currentPolicyName} -> ${activePolicyName}`);
-				} catch (e) {
-					console.error(`Failed to assign policy for ${device.name}:`, e);
-				}
-			} else {
-				// Agent-managed device: just update DB (device pulls on next sync)
-				await db
-					.update(devices)
-					.set({ currentPolicyName: activePolicyName, updatedAt: new Date().toISOString() })
-					.where(eq(devices.id, device.id));
-				console.log(`Device ${device.name} (agent): ${device.currentPolicyName} -> ${activePolicyName}`);
-			}
-		} else if (device.currentPolicyName) {
-			activePolicyNames.add(device.currentPolicyName);
-		}
-	}
-
-	// Sync Gateway DNS rules — always enabled when categories are configured
-	if (cfApiToken && cfAccountId) {
-		try {
-			await syncGatewayRules(db, cfApiToken, cfAccountId);
-		} catch (e) {
-			console.error('Failed to sync Gateway rules:', e);
+			await db
+				.update(devices)
+				.set({ currentPolicyName: activePolicyName, updatedAt: new Date().toISOString() })
+				.where(eq(devices.id, device.id));
+			console.log(`Device ${device.name}: ${device.currentPolicyName} -> ${activePolicyName}`);
 		}
 	}
 }

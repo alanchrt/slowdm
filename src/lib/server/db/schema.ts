@@ -68,11 +68,6 @@ export type PolicyConfig = {
 	privateDnsMode?: 'off' | 'opportunistic' | 'strict';
 	privateDnsHost?: string;
 	disableBrowserDoh?: boolean;
-	// Legacy fields — DNS config now lives in settings table
-	dnsFilteringEnabled?: boolean;
-	dnsBlockCategories?: string[];
-	dnsBlockedDomains?: string[];
-	dnsAllowedDomains?: string[];
 };
 
 export type Device = typeof devices.$inferSelect;

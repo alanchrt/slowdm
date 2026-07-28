@@ -1,7 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
-import { getSetting } from '$lib/server/db/seed';
 import { enforce } from '$lib/server/scheduler/enforce';
 
 export const POST: RequestHandler = async ({ platform, locals, request }) => {
@@ -17,11 +16,9 @@ export const POST: RequestHandler = async ({ platform, locals, request }) => {
 	if (!platform?.env?.DB) return json({ error: 'DB not available' }, { status: 500 });
 
 	const db = getDb(platform.env.DB);
-	const saJson =
-		platform.env.GOOGLE_SERVICE_ACCOUNT_JSON || (await getSetting(db, 'service_account_json')) || undefined;
 
 	try {
-		await enforce(db, saJson, platform.env.CF_API_TOKEN, platform.env.CF_ACCOUNT_ID, platform.env.CF_TEAM_NAME);
+		await enforce(db);
 		return json({ ok: true });
 	} catch (e) {
 		return json(

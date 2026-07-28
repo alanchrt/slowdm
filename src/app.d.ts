@@ -9,10 +9,6 @@ declare global {
 				AUTH_PASSWORD?: string;
 				AUTH_SECRET?: string;
 				CRON_SECRET?: string;
-				GOOGLE_SERVICE_ACCOUNT_JSON?: string;
-				CF_API_TOKEN?: string;
-				CF_ACCOUNT_ID?: string;
-				CF_TEAM_NAME?: string;
 			PUBLIC_URL?: string;
 			};
 			cf?: CfProperties;

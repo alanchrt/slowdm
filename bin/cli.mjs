@@ -213,9 +213,6 @@ async function cmdSecrets() {
   ensureAuth();
   console.log('  Set AUTH_PASSWORD:');
   run(wrangler('secret put AUTH_PASSWORD'));
-  console.log('');
-  console.log('  Set GOOGLE_SERVICE_ACCOUNT_JSON:');
-  run(wrangler('secret put GOOGLE_SERVICE_ACCOUNT_JSON'));
 }
 
 // ── Main ──
@@ -240,7 +237,7 @@ switch (command) {
     console.log('');
     console.log('    setup    First-time setup (create resources, set secrets, deploy)');
     console.log('    update   Ensure resources and deploy (idempotent)');
-    console.log('    secrets  Update secrets (password, service account)');
+    console.log('    secrets  Update secrets (password)');
     console.log('');
     break;
 }
