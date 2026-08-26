@@ -126,13 +126,11 @@ class DevicePolicyModule : Module() {
         when (appMode) {
             "blocklist" -> {
                 val blockedApps = jsonArrayToStringList(config.optJSONArray("blockedApps"))
-                if (blockedApps.isNotEmpty()) {
-                    // Unsuspend everything first, then suspend blocked
-                    unsuspendAll()
-                    val toSuspend = blockedApps.filter { !CRITICAL_PACKAGES.contains(it) }.toTypedArray()
-                    if (toSuspend.isNotEmpty()) {
-                        dpm.setPackagesSuspended(adminComponent, toSuspend, true)
-                    }
+                // Always unsuspend everything first — handles removals from blocklist
+                unsuspendAll()
+                val toSuspend = blockedApps.filter { !CRITICAL_PACKAGES.contains(it) }.toTypedArray()
+                if (toSuspend.isNotEmpty()) {
+                    dpm.setPackagesSuspended(adminComponent, toSuspend, true)
                 }
             }
             "allowlist" -> {
