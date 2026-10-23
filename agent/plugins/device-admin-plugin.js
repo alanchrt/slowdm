@@ -121,6 +121,9 @@ function addDeviceAdminReceiver(config) {
       'android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
       'android.permission.FOREGROUND_SERVICE',
       'android.permission.INTERNET',
+      // Policy reconciliation needs visibility of every managed app, including
+      // packages suspended by an older agent that did not persist its targets.
+      'android.permission.QUERY_ALL_PACKAGES',
       'android.permission.READ_EXTERNAL_STORAGE',
     ];
 

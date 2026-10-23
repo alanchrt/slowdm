@@ -9,7 +9,6 @@ import android.content.Intent
 import android.os.Build
 import android.os.UserManager
 import android.util.Log
-import org.json.JSONArray
 import org.json.JSONObject
 
 object PolicyApplier {
@@ -50,32 +49,7 @@ object PolicyApplier {
             cancelSafetyAlarm(context)
         }
 
-        // App suspension
-        val appMode = config.optString("appMode", "none")
-        val pm = context.packageManager
-        val allPackages = pm.getInstalledPackages(0).map { it.packageName }
-
-        when (appMode) {
-            "blocklist" -> {
-                val blocked = jsonArrayToList(config.optJSONArray("blockedApps"))
-                // Unsuspend all first
-                dpm.setPackagesSuspended(admin, allPackages.toTypedArray(), false)
-                val toSuspend = blocked.filter { !DevicePolicyModule.CRITICAL_PACKAGES.contains(it) }.toTypedArray()
-                if (toSuspend.isNotEmpty()) {
-                    dpm.setPackagesSuspended(admin, toSuspend, true)
-                }
-            }
-            "allowlist" -> {
-                val allowed = (jsonArrayToList(config.optJSONArray("allowedApps")) + DevicePolicyModule.CRITICAL_PACKAGES).toSet()
-                val toSuspend = allPackages.filter { !allowed.contains(it) }.toTypedArray()
-                val toUnsuspend = allPackages.filter { allowed.contains(it) }.toTypedArray()
-                if (toSuspend.isNotEmpty()) dpm.setPackagesSuspended(admin, toSuspend, true)
-                if (toUnsuspend.isNotEmpty()) dpm.setPackagesSuspended(admin, toUnsuspend, false)
-            }
-            else -> {
-                dpm.setPackagesSuspended(admin, allPackages.toTypedArray(), false)
-            }
-        }
+        AppSuspension.apply(context, dpm, admin, config)
 
         // Always-on VPN
         val vpnPackage = config.optString("alwaysOnVpnPackage", "")
@@ -111,11 +85,6 @@ object PolicyApplier {
     private fun setRestriction(dpm: DevicePolicyManager, admin: ComponentName, restriction: String, enabled: Boolean) {
         if (enabled) dpm.addUserRestriction(admin, restriction)
         else dpm.clearUserRestriction(admin, restriction)
-    }
-
-    private fun jsonArrayToList(arr: JSONArray?): List<String> {
-        if (arr == null) return emptyList()
-        return (0 until arr.length()).map { arr.getString(it) }
     }
 
     private fun scheduleSafetyAlarm(context: Context) {

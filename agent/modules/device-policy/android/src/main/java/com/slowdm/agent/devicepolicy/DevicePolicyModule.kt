@@ -121,39 +121,7 @@ class DevicePolicyModule : Module() {
         applyUserRestriction(UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES, !config.optBoolean("unknownSourcesAllowed", false))
         applyUserRestriction(UserManager.DISALLOW_FACTORY_RESET, config.optBoolean("backupDisabled", false))
 
-        // App suspension (blocklist/allowlist)
-        val appMode = config.optString("appMode", "none")
-        when (appMode) {
-            "blocklist" -> {
-                val blockedApps = jsonArrayToStringList(config.optJSONArray("blockedApps"))
-                // Always unsuspend everything first — handles removals from blocklist
-                unsuspendAll()
-                val toSuspend = blockedApps.filter { !CRITICAL_PACKAGES.contains(it) }.toTypedArray()
-                if (toSuspend.isNotEmpty()) {
-                    dpm.setPackagesSuspended(adminComponent, toSuspend, true)
-                }
-            }
-            "allowlist" -> {
-                val allowedApps = jsonArrayToStringList(config.optJSONArray("allowedApps"))
-                val allowedSet = (allowedApps + CRITICAL_PACKAGES).toSet()
-                // Suspend everything except allowed
-                val pm = context.packageManager
-                val allPackages = pm.getInstalledPackages(0).map { it.packageName }
-                val toSuspend = allPackages.filter { !allowedSet.contains(it) }.toTypedArray()
-                if (toSuspend.isNotEmpty()) {
-                    dpm.setPackagesSuspended(adminComponent, toSuspend, true)
-                }
-                // Unsuspend allowed
-                val toUnsuspend = allPackages.filter { allowedSet.contains(it) }.toTypedArray()
-                if (toUnsuspend.isNotEmpty()) {
-                    dpm.setPackagesSuspended(adminComponent, toUnsuspend, false)
-                }
-            }
-            else -> {
-                // No app restrictions — unsuspend everything
-                unsuspendAll()
-            }
-        }
+        AppSuspension.apply(context, dpm, adminComponent, config)
 
         // Always-on VPN
         val vpnPackage = config.optString("alwaysOnVpnPackage", "")
@@ -259,25 +227,12 @@ class DevicePolicyModule : Module() {
         }
     }
 
-    private fun unsuspendAll() {
-        val pm = context.packageManager
-        val allPackages = pm.getInstalledPackages(0).map { it.packageName }.toTypedArray()
-        if (allPackages.isNotEmpty()) {
-            dpm.setPackagesSuspended(adminComponent, allPackages, false)
-        }
-    }
-
     private fun applyUserRestriction(restriction: String, enabled: Boolean) {
         if (enabled) {
             dpm.addUserRestriction(adminComponent, restriction)
         } else {
             dpm.clearUserRestriction(adminComponent, restriction)
         }
-    }
-
-    private fun jsonArrayToStringList(arr: org.json.JSONArray?): List<String> {
-        if (arr == null) return emptyList()
-        return (0 until arr.length()).map { arr.getString(it) }
     }
 
     private fun scheduleAlarmInternal(triggerAtMillis: Long, policyJson: String) {
